@@ -1,32 +1,36 @@
 # Stage 1: Construcción (Build)
 FROM node:20-alpine AS build
 
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY package*.json ./
+# Vite inlinea import.meta.env.VITE_* en build time. Necesitamos que
+# EasyPanel (o quien buildee) pase --build-arg VITE_API_URL=... y que ese
+# valor esté en el entorno cuando se corre `npm run build`.
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
 
-# Instalar dependencias
+COPY package*.json ./
 RUN npm ci
 
-# Copiar el resto del código
 COPY . .
 
-# Compilar la aplicación para producción
-RUN npm run build
+RUN echo "Building with VITE_API_URL=${VITE_API_URL}" && npm run build
 
 # Stage 2: Servidor (Nginx)
 FROM nginx:alpine
 
-# Copiar los archivos compilados ('dist' por defecto en Vite) al servidor Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Opcional: si tienes un archivo de configuración de nginx personalizado
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# SPA fallback: cualquier ruta desconocida sirve index.html para que
+# react-router maneje el routing client-side.
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { try_files $uri $uri/ /index.html; } \
+}' > /etc/nginx/conf.d/default.conf
 
-# Exponer el puerto 80
 EXPOSE 80
 
-# Iniciar Nginx
 CMD ["nginx", "-g", "daemon off;"]
