@@ -69,25 +69,24 @@ export function Step1Personal() {
           <FieldError msg={fieldErrors.phone_wa} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="f-label">Sexo</label>
+          <Segmented
+            value={u.sex}
+            onChange={(v) => setUser({ sex: v })}
+            options={[{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }]}
+            columns={2}
+          />
+          <p className="f-helper">Se usa solo para el cálculo de TMB.</p>
+          <FieldError msg={fieldErrors.sex} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label className="f-label">Edad</label>
             <SuffixInput value={u.age} onChange={(v) => setUser({ age: v ? Number(v) : null })} suffix="años" placeholder="32" min={12} />
             <FieldError msg={fieldErrors.age} />
           </div>
-          <div>
-            <label className="f-label">Sexo</label>
-            <Segmented
-              value={u.sex}
-              onChange={(v) => setUser({ sex: v })}
-              options={[{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }]}
-            />
-            <p className="f-helper">Se usa solo para el cálculo de TMB.</p>
-            <FieldError msg={fieldErrors.sex} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="f-label">Peso</label>
             <SuffixInput value={u.weightKg} onChange={(v) => setUser({ weightKg: v ? Number(v) : null })} suffix="kg" placeholder="74" step={0.1} />
@@ -98,17 +97,17 @@ export function Step1Personal() {
             <SuffixInput value={u.heightCm} onChange={(v) => setUser({ heightCm: v ? Number(v) : null })} suffix="cm" placeholder="178" />
             <FieldError msg={fieldErrors.height_cm} />
           </div>
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-sans font-medium text-[13px] text-f-text">% Graso</span>
+              <span className="f-pill f-pill-warn">Opcional</span>
+            </div>
+            <SuffixInput value={u.bodyFatPct} onChange={(v) => setUser({ bodyFatPct: v ? Number(v) : null })} suffix="%" placeholder="Si lo sabés" step={0.1} />
+            <FieldError msg={fieldErrors.body_fat_pct} />
+          </div>
         </div>
 
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-sans font-medium text-[13px] text-f-text">% Graso</span>
-            <span className="f-pill f-pill-warn">Opcional</span>
-          </div>
-          <SuffixInput value={u.bodyFatPct} onChange={(v) => setUser({ bodyFatPct: v ? Number(v) : null })} suffix="%" placeholder="Si lo conocés" step={0.1} />
-          <p className="f-helper">No te preocupes si no lo sabés — lo estimamos por vos.</p>
-          <FieldError msg={fieldErrors.body_fat_pct} />
-        </div>
+        <p className="f-helper -mt-1">El % graso es opcional — si no lo conocés, lo estimamos.</p>
       </div>
 
       {tmb && (

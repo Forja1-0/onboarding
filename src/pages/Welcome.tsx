@@ -63,12 +63,12 @@ export function Welcome() {
       </header>
 
       <main className="flex-1 flex items-center">
-        <div className="max-w-[460px] w-full mx-auto px-[22px]">
+        <div className="max-w-[460px] w-full mx-auto px-5 sm:px-[22px] py-6">
           <div className="font-mono text-[10px] tracking-[0.06em] uppercase text-f-green-light mb-4 f-fade-up" style={{ animationDelay: "60ms" }}>
             Onboarding · 8 pasos · ~10 min
           </div>
 
-          <h1 className="font-sans font-bold text-[34px] leading-[1.1] text-f-text f-fade-up" style={{ animationDelay: "120ms" }}>
+          <h1 className="font-sans font-bold text-[30px] sm:text-[34px] leading-[1.1] text-f-text f-fade-up" style={{ animationDelay: "120ms" }}>
             Vamos a armar{" "}
             <span className="font-serif italic font-normal text-f-green-glow">tu sistema.</span>
           </h1>
@@ -78,12 +78,12 @@ export function Welcome() {
             Es largo. Pide cosas que tienen sentido pedir. <span className="text-f-text">No es una app para cualquiera.</span>
           </p>
 
-          <div className="mt-8 grid gap-2 f-fade-up" style={{ animationDelay: "280ms" }}>
+          <div className="mt-8 grid gap-2.5 f-fade-up" style={{ animationDelay: "280ms" }}>
             {ONBOARDING_STEPS.map((s) => (
-              <div key={s.idx} className="flex items-center gap-3 text-[13px] text-f-text2">
-                <span className="font-mono text-[10px] text-f-text3 w-5">0{s.idx}</span>
-                <span className="text-f-text">{s.title}</span>
-                <span className="ml-auto font-mono text-[10px] text-f-text3 uppercase">{s.eyebrow.split("·")[1]?.trim()}</span>
+              <div key={s.idx} className="flex items-center gap-3 text-[13px] text-f-text2 min-h-[28px]">
+                <span className="font-mono text-[10px] text-f-text3 w-5 shrink-0">0{s.idx}</span>
+                <span className="text-f-text truncate">{s.title}</span>
+                <span className="ml-auto font-mono text-[10px] text-f-text3 uppercase shrink-0">{s.eyebrow.split("·")[1]?.trim()}</span>
               </div>
             ))}
           </div>
@@ -103,7 +103,7 @@ export function Welcome() {
         </div>
       </main>
 
-      <footer className="pb-7 px-[22px] f-fade-up" style={{ animationDelay: "440ms" }}>
+      <footer className="px-5 sm:px-[22px] f-fade-up" style={{ animationDelay: "440ms", paddingBottom: "max(28px, env(safe-area-inset-bottom, 0px))" }}>
         <div className="max-w-[460px] mx-auto flex flex-col gap-3">
           <button
             onClick={start}

@@ -26,7 +26,7 @@ export function Done() {
       </header>
 
       <main className="flex-1">
-        <div className="max-w-[460px] mx-auto px-[22px] py-8 flex flex-col items-center text-center">
+        <div className="max-w-[460px] mx-auto px-5 sm:px-[22px] py-8 flex flex-col items-center text-center">
           {/* Hero check */}
           <div className="relative w-24 h-24 mb-6 f-fade-up">
             <div className="absolute inset-0 rounded-full f-pulse"
@@ -40,7 +40,7 @@ export function Done() {
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-f-green-glow mb-3 f-fade-up" style={{ animationDelay: "80ms" }}>
             Onboarding completo
           </div>
-          <h1 className="font-sans font-bold text-[34px] leading-[1.1] text-f-text f-fade-up" style={{ animationDelay: "140ms" }}>
+          <h1 className="font-sans font-bold text-[30px] sm:text-[34px] leading-[1.1] text-f-text f-fade-up" style={{ animationDelay: "140ms" }}>
             <span className="font-serif italic font-normal text-f-green-glow">Listo</span>{s.user.fullName ? `, ${s.user.fullName.split(" ")[0]}.` : "."}
           </h1>
           <p className="mt-3 text-[14px] text-f-text2 max-w-sm f-fade-up" style={{ animationDelay: "200ms" }}>
@@ -94,7 +94,7 @@ export function Done() {
         </div>
       </main>
 
-      <footer className="pb-7 px-[22px] f-fade-up" style={{ animationDelay: "420ms" }}>
+      <footer className="px-5 sm:px-[22px] f-fade-up" style={{ animationDelay: "420ms", paddingBottom: "max(28px, env(safe-area-inset-bottom, 0px))" }}>
         <div className="max-w-[460px] mx-auto flex flex-col gap-3">
           <a href="https://wa.me/" className="f-btn f-btn-primary w-full" style={{ height: 52 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chat</span>

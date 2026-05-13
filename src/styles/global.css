@@ -36,13 +36,22 @@ body {
 textarea.f-input { height: auto; min-height: 96px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
 
 .f-label { display: block; font: 500 13px/1.3 'DM Sans', sans-serif; color: #E8E4DC; margin-bottom: 8px; }
-.f-helper { font: 400 12px/1.4 'DM Sans', sans-serif; color: #524F4A; margin-top: 6px; }
-.f-error { font: 400 12px/1.4 'DM Sans', sans-serif; color: #A8404D; margin-top: 6px; }
+.f-helper { font: 400 12px/1.45 'DM Sans', sans-serif; color: #524F4A; margin-top: 6px; }
+.f-error { font: 400 12px/1.45 'DM Sans', sans-serif; color: #A8404D; margin-top: 6px; }
+
+/* Safe area / sticky footer offset */
+.f-page-pad-bottom { padding-bottom: max(120px, calc(96px + env(safe-area-inset-bottom, 0px))); }
+.f-page-pad-top    { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
 
 /* Cards */
 .f-card { background: #161619; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; }
 .f-card-soft { background: rgba(58,90,64,0.10); border: 1px solid rgba(91,138,100,0.20); border-radius: 12px; padding: 16px; }
 .f-card-warn { background: rgba(122,40,50,0.12); border: 1px solid #5C1E26; border-radius: 12px; padding: 18px; }
+@media (max-width: 380px) {
+  .f-card { padding: 16px; }
+  .f-card-soft { padding: 14px; }
+  .f-card-warn { padding: 14px; }
+}
 
 /* Buttons */
 .f-btn {
@@ -83,15 +92,20 @@ textarea.f-input { height: auto; min-height: 96px; padding: 12px 14px; resize: v
   padding: 4px; gap: 4px;
 }
 .f-seg-opt {
-  height: 40px;
+  min-height: 44px;
+  padding: 6px 8px;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   border-radius: 6px;
-  font: 500 14px/1 'DM Sans', sans-serif;
+  font: 500 13px/1.2 'DM Sans', sans-serif;
   color: #8A8680; cursor: pointer; border: none; background: transparent;
   transition: background .12s, color .12s;
+  text-align: center; white-space: normal; word-break: break-word;
 }
 .f-seg-opt[aria-pressed="true"] { background: #2D4532; color: #E8E4DC; }
 .f-seg-opt:hover:not([aria-pressed="true"]) { color: #E8E4DC; }
+@media (max-width: 380px) {
+  .f-seg-opt { font-size: 12px; padding: 4px 6px; gap: 4px; }
+}
 
 /* Custom checkbox indicator */
 .f-check {

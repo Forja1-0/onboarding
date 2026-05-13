@@ -34,8 +34,9 @@ export function OnboardingLayout({
       <Ambient />
 
       {/* TOP BAR */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-[#09090Bcc] border-b border-f-border">
-        <div className="max-w-[460px] mx-auto px-[22px] h-14 flex items-center gap-3">
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-[#09090Bcc] border-b border-f-border"
+              style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+        <div className="max-w-[460px] mx-auto px-5 sm:px-[22px] h-14 flex items-center gap-3">
           <button onClick={goBack} aria-label="Atrás" className="f-btn-ghost -ml-2">
             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
           </button>
@@ -46,20 +47,21 @@ export function OnboardingLayout({
 
       {/* CONTENT */}
       <main className="flex-1">
-        <div className="max-w-[460px] mx-auto px-[22px] py-7 f-fade-up">
+        <div className="max-w-[460px] mx-auto px-5 sm:px-[22px] pt-6 sm:pt-7 f-page-pad-bottom f-fade-up">
           <div className="font-mono text-[10px] tracking-[0.06em] uppercase text-f-green-light mb-3">
             {eyebrow}
           </div>
-          <h1 className="font-sans font-bold text-[26px] leading-[1.2] text-f-text">{title}</h1>
+          <h1 className="font-sans font-bold text-[24px] sm:text-[26px] leading-[1.2] text-f-text">{title}</h1>
           {lede && <p className="mt-3 text-[14px] leading-[1.6] text-f-text2">{lede}</p>}
 
-          <div className="mt-6 flex flex-col gap-4">{children}</div>
+          <div className="mt-6 flex flex-col gap-5">{children}</div>
         </div>
       </main>
 
       {/* BOTTOM BAR */}
-      <footer className="sticky bottom-0 z-40 backdrop-blur-md bg-[#09090Bcc] border-t border-f-border">
-        <div className="max-w-[460px] mx-auto px-[22px] py-3 grid gap-2"
+      <footer className="fixed inset-x-0 bottom-0 z-40 backdrop-blur-md bg-[#09090Bcc] border-t border-f-border"
+              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div className="max-w-[460px] mx-auto px-5 sm:px-[22px] py-3 grid gap-2"
              style={{ gridTemplateColumns: "1fr 2fr" }}>
           <button className="f-btn f-btn-secondary" onClick={goBack}>Atrás</button>
           <button
