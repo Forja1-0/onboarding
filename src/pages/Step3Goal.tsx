@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout, Segmented, SuffixInput } from "../onboarding/components";
+import { Callout, ErrorBanner, FieldError, Segmented, SuffixInput } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
+import { useStepSave } from "../api/hooks";
+import { buildStep3Body } from "../api/transformers";
 import {
   CompetitionType, CustomDistance, DistanceData, TRI_PRESETS, TriPreset,
 } from "../onboarding/types";
@@ -21,10 +22,9 @@ const TYPES_WITHOUT_DISTANCE: CompetitionType[] = ["strength", "team"];
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 export function Step3Goal() {
-  const nav = useNavigate();
   const g = useOnboarding((s) => s.goal);
   const setGoal = useOnboarding((s) => s.setGoal);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const { save, busy, error, fieldErrors } = useStepSave(3);
 
   const today = new Date().toISOString().slice(0, 10);
   const days = g.eventDate
@@ -35,8 +35,7 @@ export function Step3Goal() {
 
   const submit = () => {
     if (!valid) return;
-    markCompleted(3);
-    nav("/onboarding/plan-nutricional");
+    save(buildStep3Body(g), "plan-nutricional");
   };
 
   const onSelectType = (v: CompetitionType) => {
@@ -60,7 +59,8 @@ export function Step3Goal() {
       title={<>¿Hacia <span className="font-serif italic font-normal text-f-green-glow">qué fecha</span> te estás forjando?</>}
       lede="Esto alimenta el countdown de tu Journey. Sin fecha, no hay urgencia. Sin urgencia, no hay sistema."
       onContinue={submit}
-      continueDisabled={!valid}
+      continueDisabled={!valid || busy}
+      continueLabel={busy ? "Guardando…" : "Continuar"}
     >
       <div className="f-card flex flex-col gap-4">
         <div>
@@ -77,12 +77,14 @@ export function Step3Goal() {
           <label className="f-label">Nombre del evento</label>
           <input className="f-input" placeholder="Maratón de Buenos Aires"
                  value={g.eventName} onChange={(e) => setGoal({ eventName: e.target.value })} />
+          <FieldError msg={fieldErrors.event_name} />
         </div>
 
         <div>
           <label className="f-label">Fecha</label>
           <input type="date" className="f-input" min={today}
                  value={g.eventDate} onChange={(e) => setGoal({ eventDate: e.target.value })} />
+          <FieldError msg={fieldErrors.event_date} />
         </div>
 
         {g.competitionType && !TYPES_WITHOUT_DISTANCE.includes(g.competitionType) && (
@@ -120,6 +122,8 @@ export function Step3Goal() {
           <DistanceSummary distance={g.distance} type={g.competitionType} />
         </div>
       )}
+
+      {error && <ErrorBanner msg={error} />}
 
       <Callout>
         Una fecha. Un nombre. Eso es lo único que separa entrenar de prepararte.

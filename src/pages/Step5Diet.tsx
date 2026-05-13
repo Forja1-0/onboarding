@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout, Chip } from "../onboarding/components";
+import { Callout, Chip, ErrorBanner } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
+import { useStepSave } from "../api/hooks";
+import { buildStep5Body } from "../api/transformers";
 import type { DietaryRestrictions } from "../onboarding/types";
 
 const TAGS: { key: keyof DietaryRestrictions; label: string }[] = [
@@ -14,12 +15,11 @@ const TAGS: { key: keyof DietaryRestrictions; label: string }[] = [
 ];
 
 export function Step5Diet() {
-  const nav = useNavigate();
   const d = useOnboarding((s) => s.diet);
   const setDiet = useOnboarding((s) => s.setDiet);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const { save, busy, error } = useStepSave(5);
 
-  const submit = () => { markCompleted(5); nav("/onboarding/entrenamiento"); };
+  const submit = () => save(buildStep5Body(d), "entrenamiento");
 
   return (
     <OnboardingLayout
@@ -28,7 +28,8 @@ export function Step5Diet() {
       title={<>¿Hay algo que <span className="font-serif italic font-normal text-f-green-glow">no comas?</span></>}
       lede="El sugeridor de comidas filtra todo lo que marques. Si no aplica nada, salteá — son 30 segundos."
       onContinue={submit}
-      continueLabel="Continuar"
+      continueLabel={busy ? "Guardando…" : "Continuar"}
+      continueDisabled={busy}
     >
       <div className="f-card">
         <div className="flex flex-wrap gap-2">
@@ -50,6 +51,8 @@ export function Step5Diet() {
           <p className="f-helper">Cualquier cosa que el sugeridor deba evitar. Una línea es suficiente.</p>
         </div>
       </div>
+
+      {error && <ErrorBanner msg={error} />}
 
       <Callout>
         Forja no te va a sugerir lo que no comés. Marcá con honestidad — después

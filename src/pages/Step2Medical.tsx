@@ -1,15 +1,15 @@
-import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout } from "../onboarding/components";
+import { Callout, ErrorBanner } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
+import { useStepSave } from "../api/hooks";
+import { buildStep2Body } from "../api/transformers";
 
 export function Step2Medical() {
-  const nav = useNavigate();
   const m = useOnboarding((s) => s.medical);
   const setMedical = useOnboarding((s) => s.setMedical);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const { save, busy, error } = useStepSave(2);
 
-  const submit = () => { markCompleted(2); nav("/onboarding/objetivo"); };
+  const submit = () => save(buildStep2Body(m), "objetivo");
 
   const onFiles = (files: FileList | null) => {
     if (!files) return;
@@ -24,7 +24,8 @@ export function Step2Medical() {
       title={<>Ahora, <span className="font-serif italic font-normal text-f-green-glow">la verdad médica.</span></>}
       lede="Ninguna app fitness te pregunta esto. Forja sí. No es para vendértelo: es para no romperte. Si algo no aplica, dejalo en blanco."
       onContinue={submit}
-      continueLabel="Continuar"
+      continueDisabled={busy}
+      continueLabel={busy ? "Guardando…" : "Continuar"}
     >
       <div className="f-card flex flex-col gap-4">
         <Field label="Lesiones activas" hint="¿Algo te molesta hoy? Tendinitis, sobrecarga, dolor que volvió.">
@@ -37,17 +38,17 @@ export function Step2Medical() {
             value={m.pastInjuries} onChange={(e) => setMedical({ pastInjuries: e.target.value })} />
         </Field>
 
-        <Field label="Condiciones crónicas">
+        <Field label="Condiciones crónicas" hint="Separá con coma.">
           <textarea className="f-input" rows={2} placeholder="Diabetes, hipertensión, asma, hipotiroidismo…"
             value={m.chronicConditions} onChange={(e) => setMedical({ chronicConditions: e.target.value })} />
         </Field>
 
         <div className="grid grid-cols-1 gap-3">
-          <Field label="Alergias">
+          <Field label="Alergias" hint="Separá con coma.">
             <input className="f-input" placeholder="Maní, lactosa, polen…"
               value={m.allergies} onChange={(e) => setMedical({ allergies: e.target.value })} />
           </Field>
-          <Field label="Medicación actual">
+          <Field label="Medicación actual" hint="Separá con coma.">
             <input className="f-input" placeholder="Levotiroxina, ibuprofeno SOS…"
               value={m.medication} onChange={(e) => setMedical({ medication: e.target.value })} />
           </Field>
@@ -69,17 +70,24 @@ export function Step2Medical() {
           <input type="file" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
         </label>
         {m.uploads.length > 0 && (
-          <ul className="mt-3 flex flex-col gap-1.5">
-            {m.uploads.map((f, i) => (
-              <li key={i} className="flex items-center gap-2 text-[12px] text-f-text2">
-                <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 14 }}>check_circle</span>
-                <span className="truncate">{f.name}</span>
-                <span className="ml-auto font-mono text-f-text3">{Math.round(f.size / 1024)} KB</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="mt-3 flex flex-col gap-1.5">
+              {m.uploads.map((f, i) => (
+                <li key={i} className="flex items-center gap-2 text-[12px] text-f-text2">
+                  <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 14 }}>check_circle</span>
+                  <span className="truncate">{f.name}</span>
+                  <span className="ml-auto font-mono text-f-text3">{Math.round(f.size / 1024)} KB</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-f-text3">
+              Los archivos se almacenarán cuando habilitemos el storage. Por ahora se registra solo la referencia.
+            </p>
+          </>
         )}
       </div>
+
+      {error && <ErrorBanner msg={error} />}
 
       <Callout>
         Esto queda entre vos y Forja. Encriptado, separado del resto, borrable cuando quieras.

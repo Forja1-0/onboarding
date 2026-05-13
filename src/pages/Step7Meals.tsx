@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout, Disclosure, FileDrop } from "../onboarding/components";
+import { Callout, Disclosure, ErrorBanner, FileDrop } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
+import { useStepSave } from "../api/hooks";
+import { buildStep7Body } from "../api/transformers";
 import type { FrequentMeal } from "../onboarding/types";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -9,11 +10,10 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const SUGGESTED_ALIASES = ["Desayuno 1", "Pre-entreno", "Post-entreno", "Almuerzo tipo", "Merienda", "Cena tipo", "Snack"];
 
 export function Step7Meals() {
-  const nav = useNavigate();
   const m = useOnboarding((s) => s.meals);
   const setMeals = useOnboarding((s) => s.setMeals);
   const nutritionistPlanFile = useOnboarding((s) => s.nutrition.planFile);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const { save, busy, error } = useStepSave(7);
 
   const addMeal = (alias = "") =>
     setMeals({ meals: [...m.meals, { id: uid(), alias, ingredients: [{ name: "", grams: null }], notes: "" }] });
@@ -22,13 +22,13 @@ export function Step7Meals() {
   const updateMeal = (id: string, patch: Partial<FrequentMeal>) =>
     setMeals({ meals: m.meals.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
 
-  const hasFile = !!m.listFile;
-  const hasText = m.listText.trim().length >= 10;
   const hasManual = m.meals.length >= 1
     && m.meals.every((x) => x.alias.trim() && x.ingredients.some((i) => i.name.trim()));
-  const valid = hasFile || hasText || hasManual;
+  // El backend solo recibe meals estructuradas. File/text del listado se
+  // aceptan como referencia pero no se envían (no hay parser de meals todavía).
+  const valid = hasManual;
 
-  const submit = () => { if (!valid) return; markCompleted(7); nav("/onboarding/consentimiento"); };
+  const submit = () => { if (!valid) return; save(buildStep7Body(m), "consentimiento"); };
 
   return (
     <OnboardingLayout
@@ -43,7 +43,8 @@ export function Step7Meals() {
         </>
       }
       onContinue={submit}
-      continueDisabled={!valid}
+      continueDisabled={!valid || busy}
+      continueLabel={busy ? "Guardando…" : "Continuar"}
     >
       {/* Si en paso 4 ya subió plan del nutri, aclaramos el matiz */}
       {nutritionistPlanFile && (
@@ -62,12 +63,12 @@ export function Step7Meals() {
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 18 }}>upload_file</span>
           <div className="font-sans font-medium text-[14px] text-f-text">Subí tu listado de comidas</div>
-          <span className="f-pill f-pill-green ml-auto">Recomendado</span>
+          <span className="f-pill f-pill-warn ml-auto">Próximamente</span>
         </div>
 
         <p className="text-[12px] text-f-text2">
-          ¿Tenés un listado o foto de las comidas que repetís? PDF, imagen, hoja de cálculo, o el texto del
-          chat con tu nutri. Lo procesamos y te lo dejamos prearmado.
+          ¿Tenés un listado o foto de las comidas que repetís? Por ahora se acepta como referencia.
+          Para que el bot las use, cargalas en el editor manual de abajo.
         </p>
 
         <FileDrop
@@ -104,10 +105,10 @@ export function Step7Meals() {
 
       {/* SECONDARY: editor manual */}
       <Disclosure
-        title="¿Preferís cargarlas a mano? Editor manual"
-        subtitle="Da más control. Conviene si tenés pocas comidas tipo y querés precisión absoluta."
+        title="Editor manual — armá tus comidas tipo"
+        subtitle="Una etiqueta + ingredientes con gramos por comida. Es lo único que el bot va a poder usar para loguear rápido."
         accent="warn"
-        defaultOpen={hasManual && !hasFile && !hasText}
+        defaultOpen={true}
       >
         {/* Aclaración de qué es el alias */}
         <div className="f-card-soft mb-3 text-[12.5px] leading-[1.5] text-f-text">
@@ -145,6 +146,8 @@ export function Step7Meals() {
           <span>Agregar comida</span>
         </button>
       </Disclosure>
+
+      {error && <ErrorBanner msg={error} />}
 
       <Callout>
         Cargá las que de verdad repetís — no hace falta cubrir todo lo que comés.

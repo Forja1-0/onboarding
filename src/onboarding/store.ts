@@ -12,7 +12,7 @@ const initial: OnboardingState = {
   goal: { competitionType: null, eventName: "", eventDate: "", distance: {}, notes: "" },
   nutrition: { kcal: null, proteinG: null, carbsG: null, fatG: null, perMealDistribution: false, nutritionistName: "", planFile: null },
   diet: { vegan: false, vegetarian: false, celiac: false, noLactose: false, noPork: false, noFish: false, custom: "" },
-  training: { coachName: "", planFile: null, planText: "", parsed: false, week: [] },
+  training: { coachName: "", planFile: null, planText: "", parsed: false, parsedDays: null, week: [] },
   meals: { listFile: null, listText: "", meals: [] },
   consent: { sensitiveData: false, internationalTransfer: false, nutritionDisclaimer: false },
   completedSteps: [],

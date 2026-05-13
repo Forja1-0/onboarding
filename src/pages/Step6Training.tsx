@@ -1,13 +1,18 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout, Disclosure, FileDrop, Segmented } from "../onboarding/components";
+import { Callout, Disclosure, ErrorBanner, FileDrop, Segmented } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
 import type { SessionType, TrainingDay } from "../onboarding/types";
+import { api, ApiError, ValidationError } from "../api/client";
+import { useStepSave } from "../api/hooks";
+import { buildStep6Body } from "../api/transformers";
 
 const DAYS: TrainingDay["day"][] = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"];
 const DAY_FULL: Record<TrainingDay["day"], string> = {
   lun: "Lunes", mar: "Martes", mie: "Miércoles", jue: "Jueves", vie: "Viernes", sab: "Sábado", dom: "Domingo",
+};
+const DAY_NUM_TO_LABEL: Record<number, string> = {
+  0: "Domingo", 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado",
 };
 
 const SESSIONS: { value: SessionType; label: string; icon: string; color: string }[] = [
@@ -22,10 +27,13 @@ const SESSIONS: { value: SessionType; label: string; icon: string; color: string
 ];
 
 export function Step6Training() {
-  const nav = useNavigate();
   const t = useOnboarding((s) => s.training);
   const setTraining = useOnboarding((s) => s.setTraining);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const userId = useOnboarding((s) => s.userId);
+  const { save, busy: saving, error: saveError } = useStepSave(6);
+
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   const week = useMemo(() => {
     const map = new Map(t.week.map((d) => [d.day, d]));
@@ -39,19 +47,42 @@ export function Step6Training() {
   };
 
   const sessionsCount = week.filter((d) => d.type !== "rest").length;
-  const hasFile = !!t.planFile;
   const hasText = t.planText.trim().length >= 10;
   const hasManual = sessionsCount >= 1;
-  const valid = hasFile || hasText || hasManual;
+  const hasParsed = !!t.parsedDays && t.parsedDays.length > 0;
+  // El back acepta plan parseado o semana manual. El archivo se acepta como
+  // referencia pero no se envía (no hay storage de uploads todavía).
+  const valid = hasParsed || hasManual;
 
-  // TODO: cuando esté el endpoint POST /:userId/parse-training-plan, este botón
-  // mandará t.planText ahí, mostrará preview editable y poblará t.week.
-  const onParseText = () => {
-    // Stub: marcamos como parseado para que la verificación pase.
-    setTraining({ parsed: true });
+  const onParseText = async () => {
+    if (!userId) return;
+    setParseError(null);
+    setParsing(true);
+    try {
+      const { parsed } = await api.parseTrainingPlan(userId, t.planText);
+      setTraining({
+        parsed: true,
+        parsedDays: parsed.days,
+        coachName: parsed.coach_name ?? t.coachName,
+      });
+    } catch (e) {
+      if (e instanceof ValidationError) setParseError("Revisá el texto pegado.");
+      else if (e instanceof ApiError) setParseError(e.message);
+      else setParseError(e instanceof Error ? e.message : "No se pudo parsear.");
+    } finally {
+      setParsing(false);
+    }
   };
 
-  const submit = () => { if (!valid) return; markCompleted(6); nav("/onboarding/comidas-frecuentes"); };
+  const clearParsed = () =>
+    setTraining({ parsed: false, parsedDays: null });
+
+  const submit = () => {
+    if (!valid) return;
+    save(buildStep6Body(t, t.parsedDays
+      ? { coach_name: t.coachName || null, days: t.parsedDays }
+      : null), "comidas-frecuentes");
+  };
 
   return (
     <OnboardingLayout
@@ -65,7 +96,8 @@ export function Step6Training() {
         </>
       }
       onContinue={submit}
-      continueDisabled={!valid}
+      continueDisabled={!valid || saving}
+      continueLabel={saving ? "Guardando…" : "Continuar"}
     >
       {/* PRIMARY: upload + paste */}
       <div className="f-card flex flex-col gap-4">
@@ -86,7 +118,7 @@ export function Step6Training() {
           file={t.planFile}
           onFile={(f) => setTraining({ planFile: f })}
           label="Arrastrá o tocá para subir"
-          hint="PDF, Excel, captura del WhatsApp, foto del cuaderno. Lo procesamos y lo dejamos listo."
+          hint="PDF, Excel, captura del WhatsApp, foto del cuaderno. Por ahora se acepta como referencia — para mandarlo al back, pegá el texto abajo."
         />
 
         <div className="relative my-1 text-center">
@@ -103,7 +135,7 @@ export function Step6Training() {
             rows={6}
             placeholder={"Lunes\nPiernas A\nSentadilla 4x8\nPrensa 3x12\n\nMartes\nDescanso\n..."}
             value={t.planText}
-            onChange={(e) => setTraining({ planText: e.target.value, parsed: false })}
+            onChange={(e) => setTraining({ planText: e.target.value, parsed: false, parsedDays: null })}
             maxLength={8000}
           />
           <div className="flex items-center justify-between mt-1">
@@ -114,21 +146,69 @@ export function Step6Training() {
             <button
               className="f-btn f-btn-secondary w-full mt-3"
               onClick={onParseText}
-              disabled={t.parsed}
+              disabled={parsing || hasParsed}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>auto_awesome</span>
-              <span>{t.parsed ? "Plan parseado · revisá abajo" : "Parsear con IA y revisar"}</span>
+              <span>
+                {parsing ? "Parseando…" : hasParsed ? "Plan parseado · revisá abajo" : "Parsear con IA y revisar"}
+              </span>
             </button>
+          )}
+          {parseError && (
+            <p className="mt-2 text-[12px] text-f-red-light">{parseError}</p>
           )}
         </div>
       </div>
+
+      {/* Preview del parseo AI */}
+      {hasParsed && t.parsedDays && (
+        <div className="f-card flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-f-green-glow" style={{ fontSize: 18 }}>auto_awesome</span>
+            <div className="font-sans font-medium text-[14px] text-f-text">Plan interpretado</div>
+            <button className="ml-auto f-btn-ghost text-f-red-light text-[12px]" onClick={clearParsed}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+              <span>Descartar</span>
+            </button>
+          </div>
+          <p className="text-[12px] text-f-text2">
+            Revisá que esté bien antes de continuar. Si algo está mal, descartá y volvé a pegar el texto.
+          </p>
+          <div className="flex flex-col gap-2">
+            {t.parsedDays.map((d, i) => (
+              <div key={i} className="f-card-soft !p-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3">
+                    {DAY_NUM_TO_LABEL[d.day_of_week] ?? `Día ${d.day_of_week}`}
+                  </span>
+                  <span className="text-[12px] text-f-text">{d.session_type}</span>
+                  {d.session_name && (
+                    <span className="ml-auto font-serif italic text-[13px] text-f-text">{d.session_name}</span>
+                  )}
+                </div>
+                {d.exercises.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {d.exercises.map((ex, j) => (
+                      <li key={j} className="text-[12px] text-f-text2">
+                        <span className="text-f-text">{ex.name}</span>
+                        {ex.sets && <span className="font-mono"> · {ex.sets}x{ex.reps ?? "?"}</span>}
+                        {ex.load_kg && <span className="font-mono"> · {ex.load_kg}kg</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SECONDARY: manual fallback */}
       <Disclosure
         title="¿No tenés archivo? Cargalo manual"
         subtitle="Marcá día por día qué entrenás. Es más laburo, pero igual de preciso."
         accent="warn"
-        defaultOpen={hasManual && !hasFile && !hasText}
+        defaultOpen={hasManual && !hasParsed}
       >
         <div className="flex flex-col gap-3">
           {week.map((d) => (
@@ -144,6 +224,8 @@ export function Step6Training() {
           </div>
         </div>
       </Disclosure>
+
+      {saveError && <ErrorBanner msg={saveError} />}
 
       <Callout>
         Cargá lo más fiel que tengas. Si después cambia el plan del coach, lo

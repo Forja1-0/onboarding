@@ -215,6 +215,21 @@ export function FileDrop({
   );
 }
 
+/* Banner de error para los step pages */
+export function ErrorBanner({ msg }: { msg: string }) {
+  return (
+    <div className="f-card-warn">
+      <p className="text-[13px] text-f-red-light">{msg}</p>
+    </div>
+  );
+}
+
+/* Inline field error */
+export function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <p className="mt-1 text-[12px] text-f-red-light">{msg}</p>;
+}
+
 /* Brand wordmark */
 export function Wordmark({ size = 18 }: { size?: number }) {
   return (

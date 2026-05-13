@@ -1,21 +1,21 @@
-import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
-import { Callout, Segmented, SuffixInput } from "../onboarding/components";
+import { Callout, ErrorBanner, FieldError, Segmented, SuffixInput } from "../onboarding/components";
 import { estimateTMB, useOnboarding } from "../onboarding/store";
+import { useStepSave } from "../api/hooks";
+import { buildStep1Body } from "../api/transformers";
 
 export function Step1Personal() {
-  const nav = useNavigate();
   const u = useOnboarding((s) => s.user);
   const setUser = useOnboarding((s) => s.setUser);
-  const markCompleted = useOnboarding((s) => s.markCompleted);
+  const { save, busy, error, fieldErrors } = useStepSave(1);
 
-  const valid = !!u.fullName.trim() && !!u.age && !!u.sex && !!u.weightKg && !!u.heightCm;
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email.trim());
+  const valid = !!u.fullName.trim() && !!u.age && !!u.sex && !!u.weightKg && !!u.heightCm && emailValid;
   const tmb = estimateTMB(u);
 
   const submit = () => {
     if (!valid) return;
-    markCompleted(1);
-    nav("/onboarding/historia-clinica");
+    save(buildStep1Body(u), "historia-clinica");
   };
 
   return (
@@ -25,7 +25,8 @@ export function Step1Personal() {
       title={<>Empecemos por <span className="font-serif italic font-normal text-f-green-glow">lo básico.</span></>}
       lede="Esto se usa para calcular tu metabolismo basal (TMB) y ajustar los macros. Cuanto más preciso, mejor el plan."
       onContinue={submit}
-      continueDisabled={!valid}
+      continueDisabled={!valid || busy}
+      continueLabel={busy ? "Guardando…" : "Continuar"}
     >
       <div className="f-card flex flex-col gap-4">
         <div>
@@ -38,12 +39,41 @@ export function Step1Personal() {
             onChange={(e) => setUser({ fullName: e.target.value })}
             autoFocus
           />
+          <FieldError msg={fieldErrors.name} />
+        </div>
+
+        <div>
+          <label className="f-label" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="f-input"
+            placeholder="vos@ejemplo.com"
+            value={u.email}
+            onChange={(e) => setUser({ email: e.target.value })}
+          />
+          <p className="f-helper">Lo usamos para contactarte si algo importante cambia.</p>
+          <FieldError msg={fieldErrors.email} />
+        </div>
+
+        <div>
+          <label className="f-label" htmlFor="phoneWa">WhatsApp (opcional)</label>
+          <input
+            id="phoneWa"
+            className="f-input"
+            placeholder="5491145678901"
+            value={u.phoneWa}
+            onChange={(e) => setUser({ phoneWa: e.target.value })}
+          />
+          <p className="f-helper">Código país + número. Después lo verificamos cuando nos escribas al bot.</p>
+          <FieldError msg={fieldErrors.phone_wa} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="f-label">Edad</label>
             <SuffixInput value={u.age} onChange={(v) => setUser({ age: v ? Number(v) : null })} suffix="años" placeholder="32" min={12} />
+            <FieldError msg={fieldErrors.age} />
           </div>
           <div>
             <label className="f-label">Sexo</label>
@@ -53,6 +83,7 @@ export function Step1Personal() {
               options={[{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }]}
             />
             <p className="f-helper">Se usa solo para el cálculo de TMB.</p>
+            <FieldError msg={fieldErrors.sex} />
           </div>
         </div>
 
@@ -60,10 +91,12 @@ export function Step1Personal() {
           <div>
             <label className="f-label">Peso</label>
             <SuffixInput value={u.weightKg} onChange={(v) => setUser({ weightKg: v ? Number(v) : null })} suffix="kg" placeholder="74" step={0.1} />
+            <FieldError msg={fieldErrors.weight_kg} />
           </div>
           <div>
             <label className="f-label">Altura</label>
             <SuffixInput value={u.heightCm} onChange={(v) => setUser({ heightCm: v ? Number(v) : null })} suffix="cm" placeholder="178" />
+            <FieldError msg={fieldErrors.height_cm} />
           </div>
         </div>
 
@@ -74,6 +107,7 @@ export function Step1Personal() {
           </div>
           <SuffixInput value={u.bodyFatPct} onChange={(v) => setUser({ bodyFatPct: v ? Number(v) : null })} suffix="%" placeholder="Si lo conocés" step={0.1} />
           <p className="f-helper">No te preocupes si no lo sabés — lo estimamos por vos.</p>
+          <FieldError msg={fieldErrors.body_fat_pct} />
         </div>
       </div>
 
@@ -92,9 +126,12 @@ export function Step1Personal() {
         </div>
       )}
 
+      {error && <ErrorBanner msg={error} />}
+
       <Callout>
         Tomate los segundos que necesites. Esto define todo lo que viene.
       </Callout>
     </OnboardingLayout>
   );
 }
+

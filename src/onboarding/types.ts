@@ -103,6 +103,21 @@ export interface TrainingDay {
   description: string;
 }
 
+export interface ParsedTrainingDay {
+  day_of_week: number;
+  session_type: string;
+  session_name: string | null;
+  duration_min: number | null;
+  exercises: Array<{
+    name: string;
+    aliases: string[];
+    sets: number | null;
+    reps: string | null;
+    load_kg: number | null;
+    notes: string | null;
+  }>;
+}
+
 export interface TrainingPlan {
   // Modo: si hay archivo o texto pegado, es la fuente de verdad.
   // El editor manual es fallback explícito.
@@ -110,6 +125,7 @@ export interface TrainingPlan {
   planFile: { name: string; size: number } | null;
   planText: string;        // texto pegado (WA, copy-paste de Excel/Sheet…)
   parsed: boolean;         // true si pasó por /parse-training-plan
+  parsedDays: ParsedTrainingDay[] | null; // resultado del parser AI
   // Editor manual (semana tipo) — convive con archivo, pero el usuario sabe
   // que el archivo es la verdad y esto es preview/ajuste.
   week: TrainingDay[];

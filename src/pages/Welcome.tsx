@@ -1,9 +1,58 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Ambient } from "../onboarding/OnboardingLayout";
 import { Wordmark } from "../onboarding/components";
 import { ONBOARDING_STEPS } from "../onboarding/types";
+import { useOnboarding } from "../onboarding/store";
+import { api, ApiError } from "../api/client";
 
 export function Welcome() {
+  const nav = useNavigate();
+  const userId = useOnboarding((s) => s.userId);
+  const setUserId = useOnboarding((s) => s.setUserId);
+  const reset = useOnboarding((s) => s.reset);
+  const [busy, setBusy] = useState<"start" | "resume" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const start = async () => {
+    setError(null);
+    if (userId) {
+      nav("/onboarding/datos-personales");
+      return;
+    }
+    setBusy("start");
+    try {
+      const { user_id } = await api.startOnboarding({});
+      setUserId(user_id);
+      nav("/onboarding/datos-personales");
+    } catch (e) {
+      setError(humanError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const resume = async () => {
+    if (!userId) return;
+    setError(null);
+    setBusy("resume");
+    try {
+      const state = await api.getOnboarding(userId);
+      const next = Math.min(state.onboarding_step + 1, 8);
+      const target = ONBOARDING_STEPS.find((s) => s.idx === next);
+      nav(target ? `/onboarding/${target.slug}` : "/onboarding/consentimiento");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) {
+        reset();
+        setError("No encontramos tu onboarding anterior. Volvé a empezar.");
+      } else {
+        setError(humanError(e));
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="min-h-dvh flex flex-col">
       <Ambient />
@@ -45,20 +94,45 @@ export function Welcome() {
               Datos sensibles encriptados. Podés borrar todo cuando quieras. <span className="text-f-text2">Ley 25.326.</span>
             </p>
           </div>
+
+          {error && (
+            <div className="mt-4 f-card-warn f-fade-up">
+              <p className="text-[13px] text-f-red-light">{error}</p>
+            </div>
+          )}
         </div>
       </main>
 
       <footer className="pb-7 px-[22px] f-fade-up" style={{ animationDelay: "440ms" }}>
         <div className="max-w-[460px] mx-auto flex flex-col gap-3">
-          <Link to="/onboarding/datos-personales" className="f-btn f-btn-primary w-full">
-            <span>Empezar</span>
+          <button
+            onClick={start}
+            disabled={busy !== null}
+            className="f-btn f-btn-primary w-full"
+          >
+            <span>{busy === "start" ? "Creando…" : "Empezar"}</span>
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
-          </Link>
-          <p className="text-center text-[12px] text-f-text3">
-            ¿Ya empezaste? <a className="text-f-green-light underline-offset-4 hover:underline">Continuar donde quedaste</a>
-          </p>
+          </button>
+          {userId && (
+            <p className="text-center text-[12px] text-f-text3">
+              ¿Ya empezaste?{" "}
+              <button
+                className="text-f-green-light underline-offset-4 hover:underline disabled:opacity-50"
+                onClick={resume}
+                disabled={busy !== null}
+              >
+                {busy === "resume" ? "Buscando…" : "Continuar donde quedaste"}
+              </button>
+            </p>
+          )}
         </div>
       </footer>
     </div>
   );
+}
+
+function humanError(e: unknown): string {
+  if (e instanceof ApiError) return `Error ${e.status}: ${e.message}`;
+  if (e instanceof Error) return `No se pudo conectar con el server. ${e.message}`;
+  return "Algo falló. Probá de nuevo.";
 }
