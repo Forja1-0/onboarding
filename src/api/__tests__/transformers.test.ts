@@ -160,6 +160,7 @@ describe("buildStep4Body", () => {
     kcal: 2800, proteinG: 180, carbsG: 320, fatG: 90,
     perMealDistribution: false, nutritionistName: "Lic. Juan Pérez",
     planFile: null,
+    parsedFromFile: false, parsedMeals: [], parsedNotes: [],
   };
 
   it("mapea macros al schema del back", () => {
@@ -217,6 +218,10 @@ describe("buildStep6Body", () => {
     planText: "",
     parsed: false,
     parsedDays: null,
+    parsedFromFile: false,
+    parsedRehabRules: [],
+    parsedRehabProtocols: [],
+    parsedAlerts: { stop: [], reduce: [] },
     week: [
       { day: "lun", type: "strength", time: "07:30", durationMin: 75, description: "Piernas A" },
       { day: "mar", type: "rest", time: "", durationMin: null, description: "" },

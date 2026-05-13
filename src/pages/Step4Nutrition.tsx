@@ -1,14 +1,19 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
 import { Callout, Checkbox, ErrorBanner, FieldError, FileDrop, SuffixInput } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep4Body } from "../api/transformers";
+import { api, ApiError, ValidationError, type ParsedNutritionPlanRich } from "../api/client";
 
 export function Step4Nutrition() {
   const n = useOnboarding((s) => s.nutrition);
   const setNutrition = useOnboarding((s) => s.setNutrition);
+  const userId = useOnboarding((s) => s.userId);
   const { save, busy, error, fieldErrors } = useStepSave(4);
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const computedKcal = useMemo(() => {
     if (!n.proteinG && !n.carbsG && !n.fatG) return null;
@@ -21,6 +26,43 @@ export function Step4Nutrition() {
 
   const submit = () => { if (!valid) return; save(buildStep4Body(n), "restricciones"); };
 
+  const applyParsed = (parsed: ParsedNutritionPlanRich) => {
+    setNutrition({
+      kcal: parsed.targets.kcal ?? n.kcal,
+      proteinG: parsed.targets.protein_g ?? n.proteinG,
+      carbsG: parsed.targets.carbs_g ?? n.carbsG,
+      fatG: parsed.targets.fat_g ?? n.fatG,
+      nutritionistName: parsed.nutritionist_name ?? n.nutritionistName,
+      perMealDistribution: parsed.meal_distribution.length > 0,
+      parsedFromFile: true,
+      parsedMeals: parsed.meal_distribution.map((m) => ({
+        meal_id: m.meal_id, label: m.label, schedule: m.schedule,
+        description: m.description, items: m.items, macros: m.macros, notes: m.notes,
+      })),
+      parsedNotes: parsed.general_notes,
+    });
+  };
+
+  const onFile = async (file: File | null) => {
+    setNutrition({ planFile: file });
+    setUploadError(null);
+    if (!file || !userId) return;
+    setUploading(true);
+    try {
+      const { parsed } = await api.uploadNutritionPlan(userId, file);
+      applyParsed(parsed);
+    } catch (e) {
+      if (e instanceof ValidationError) setUploadError("El back rechazo el archivo.");
+      else if (e instanceof ApiError) setUploadError(e.message);
+      else setUploadError(e instanceof Error ? e.message : "No se pudo procesar el archivo.");
+      // Si falló, dejamos el File en el state para que el user vea qué subió
+      // pero limpiamos los datos parseados anteriores para evitar mezcla.
+      setNutrition({ parsedFromFile: false, parsedMeals: [], parsedNotes: [] });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <OnboardingLayout
       step={4}
@@ -28,9 +70,57 @@ export function Step4Nutrition() {
       title={<>Tus <span className="font-serif italic font-normal text-f-green-glow">macros target.</span></>}
       lede="Sin macros definidos, Forja no funciona. Si todavía no los tenés, hablalos con tu nutricionista antes de seguir — esto no se inventa."
       onContinue={submit}
-      continueDisabled={!valid || busy}
-      continueLabel={busy ? "Guardando…" : "Continuar"}
+      continueDisabled={!valid || busy || uploading}
+      continueLabel={busy ? "Guardando…" : uploading ? "Procesando archivo…" : "Continuar"}
     >
+      <div className="f-card flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 18 }}>upload_file</span>
+          <div className="font-sans font-medium text-[14px] text-f-text">Plan del nutricionista</div>
+          <span className="f-pill f-pill-green ml-auto">Recomendado</span>
+        </div>
+        <p className="text-[12px] text-f-text2">
+          Subí el PDF (o imagen) del nutri. Lo procesamos con IA para extraer tus macros,
+          la distribución por comida, el meal-prep y la lista de compras. Después podés
+          ajustar lo que haga falta.
+        </p>
+        <div>
+          <label className="f-label">Nombre del nutricionista</label>
+          <input className="f-input" placeholder="Lic. Juan Pérez"
+                 value={n.nutritionistName} onChange={(e) => setNutrition({ nutritionistName: e.target.value })} />
+        </div>
+        <FileDrop
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
+          file={n.planFile}
+          onFile={onFile}
+          label="Subir plan completo"
+          hint="PDF, imagen o screenshot. Hasta 10 MB."
+          busy={uploading}
+          busyLabel="parseando con IA"
+        />
+        {uploadError && <p className="text-[12px] text-f-red-light">{uploadError}</p>}
+        {n.parsedFromFile && n.parsedMeals.length > 0 && (
+          <div className="f-card-soft flex flex-col gap-2 !p-3 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-f-green-glow" style={{ fontSize: 16 }}>auto_awesome</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3">
+                Distribución detectada
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1">
+              {n.parsedMeals.map((m) => (
+                <li key={m.meal_id} className="text-[12px] text-f-text2">
+                  <span className="text-f-text">{m.label}</span>
+                  {m.schedule && <span className="font-mono text-f-text3"> · {m.schedule}</span>}
+                  {m.macros.kcal != null && <span className="font-mono"> · {m.macros.kcal} kcal</span>}
+                  {m.macros.protein_g != null && <span className="font-mono"> · P{m.macros.protein_g}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       <div className="f-card flex flex-col gap-4">
         <div>
           <label className="f-label">Calorías diarias</label>
@@ -48,7 +138,7 @@ export function Step4Nutrition() {
         <Checkbox
           checked={n.perMealDistribution}
           onToggle={() => setNutrition({ perMealDistribution: !n.perMealDistribution })}
-          label="Quiero distribuir mis macros por comida (lo definimos después)"
+          label="Distribuir mis macros por comida (lo detectamos del archivo)"
         />
       </div>
 
@@ -74,30 +164,6 @@ export function Step4Nutrition() {
           </div>
         </div>
       )}
-
-      <div className="f-card flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-f-text2" style={{ fontSize: 18 }}>upload_file</span>
-          <div className="font-sans font-medium text-[14px] text-f-text">Plan del nutricionista</div>
-          <span className="f-pill f-pill-warn ml-auto">Opcional</span>
-        </div>
-        <p className="text-[12px] text-f-text2">
-          Si tenés el archivo del nutri (PDF, imagen, screenshot), subilo. Lo guardamos como referencia
-          y queda atado a tu cuenta.
-        </p>
-        <div>
-          <label className="f-label">Nombre del nutricionista</label>
-          <input className="f-input" placeholder="Lic. Juan Pérez"
-                 value={n.nutritionistName} onChange={(e) => setNutrition({ nutritionistName: e.target.value })} />
-        </div>
-        <FileDrop
-          accept=".pdf,.png,.jpg,.jpeg,.webp"
-          file={n.planFile}
-          onFile={(f) => setNutrition({ planFile: f })}
-          label="Subir plan completo"
-          hint="PDF, imagen o screenshot. Pesa hasta 10 MB."
-        />
-      </div>
 
       {error && <ErrorBanner msg={error} />}
 

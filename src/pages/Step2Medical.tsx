@@ -13,8 +13,7 @@ export function Step2Medical() {
 
   const onFiles = (files: FileList | null) => {
     if (!files) return;
-    const list = Array.from(files).map((f) => ({ name: f.name, size: f.size }));
-    setMedical({ uploads: [...m.uploads, ...list] });
+    setMedical({ uploads: [...m.uploads, ...Array.from(files)] });
   };
 
   return (

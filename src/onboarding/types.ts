@@ -21,7 +21,7 @@ export interface MedicalHistory {
   chronicConditions: string;
   allergies: string;
   medication: string;
-  uploads: { name: string; size: number }[];
+  uploads: File[];
 }
 
 /* --------- Goal: distancia dinámica por tipo de competencia --------- */
@@ -70,6 +70,22 @@ export interface Goal {
 /* ----- Nutrition (incluye archivo del nutricionista, ya que el backend
    lo mapea a nutrition_plans.plan_file_url + nutritionist_name) ----- */
 
+/* Distribución por comida derivada del PDF (preview editable) */
+export interface ParsedMeal {
+  meal_id: string;
+  label: string;
+  schedule: string | null;
+  description: string | null;
+  items: Array<{ name: string; grams: number | null; units: string | null }>;
+  macros: {
+    kcal: number | null;
+    protein_g: number | null;
+    carbs_g: number | null;
+    fat_g: number | null;
+  };
+  notes: string | null;
+}
+
 export interface NutritionPlan {
   kcal: number | null;
   proteinG: number | null;
@@ -77,7 +93,11 @@ export interface NutritionPlan {
   fatG: number | null;
   perMealDistribution: boolean;
   nutritionistName: string;
-  planFile: { name: string; size: number } | null;
+  planFile: File | null;
+  /** Set tras subir el archivo y parsearlo en el back. */
+  parsedFromFile: boolean;
+  parsedMeals: ParsedMeal[];
+  parsedNotes: string[];
 }
 
 export interface DietaryRestrictions {
@@ -122,10 +142,14 @@ export interface TrainingPlan {
   // Modo: si hay archivo o texto pegado, es la fuente de verdad.
   // El editor manual es fallback explícito.
   coachName: string;
-  planFile: { name: string; size: number } | null;
+  planFile: File | null;
   planText: string;        // texto pegado (WA, copy-paste de Excel/Sheet…)
-  parsed: boolean;         // true si pasó por /parse-training-plan
-  parsedDays: ParsedTrainingDay[] | null; // resultado del parser AI
+  parsed: boolean;         // true si pasó por /parse-training-plan o /upload
+  parsedDays: ParsedTrainingDay[] | null; // resultado del parser
+  parsedFromFile: boolean; // true si el parsed_data viene del PDF subido
+  parsedRehabRules: string[]; // reglas no-negociables que muestra el preview
+  parsedRehabProtocols: Array<{ area: string; summary: string }>;
+  parsedAlerts: { stop: string[]; reduce: string[] };
   // Editor manual (semana tipo) — convive con archivo, pero el usuario sabe
   // que el archivo es la verdad y esto es preview/ajuste.
   week: TrainingDay[];
@@ -142,7 +166,7 @@ export interface FrequentMeal {
 
 export interface MealsData {
   // Si el nutri dio un plan con listado de comidas, el user lo sube acá.
-  listFile: { name: string; size: number } | null;
+  listFile: File | null;
   listText: string;
   // Manual: comidas que el user repite en su semana.
   meals: FrequentMeal[];

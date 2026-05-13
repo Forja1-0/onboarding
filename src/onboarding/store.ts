@@ -10,9 +10,17 @@ const initial: OnboardingState = {
   user: { fullName: "", age: null, sex: null, weightKg: null, heightCm: null, bodyFatPct: null, email: "", phoneWa: "" },
   medical: { activeInjuries: "", pastInjuries: "", chronicConditions: "", allergies: "", medication: "", uploads: [] },
   goal: { competitionType: null, eventName: "", eventDate: "", distance: {}, notes: "" },
-  nutrition: { kcal: null, proteinG: null, carbsG: null, fatG: null, perMealDistribution: false, nutritionistName: "", planFile: null },
+  nutrition: {
+    kcal: null, proteinG: null, carbsG: null, fatG: null,
+    perMealDistribution: false, nutritionistName: "", planFile: null,
+    parsedFromFile: false, parsedMeals: [], parsedNotes: [],
+  },
   diet: { vegan: false, vegetarian: false, celiac: false, noLactose: false, noPork: false, noFish: false, custom: "" },
-  training: { coachName: "", planFile: null, planText: "", parsed: false, parsedDays: null, week: [] },
+  training: {
+    coachName: "", planFile: null, planText: "", parsed: false, parsedDays: null,
+    parsedFromFile: false, parsedRehabRules: [], parsedRehabProtocols: [],
+    parsedAlerts: { stop: [], reduce: [] }, week: [],
+  },
   meals: { listFile: null, listText: "", meals: [] },
   consent: { sensitiveData: false, internationalTransfer: false, nutritionDisclaimer: false },
   completedSteps: [],
@@ -53,7 +61,18 @@ export const useOnboarding = create<OnboardingState & Actions>()(
         })),
       reset: () => set(() => ({ ...initial })),
     }),
-    { name: "forja.onboarding.v2" },
+    {
+      name: "forja.onboarding.v3",
+      // Los File objects no sobreviven a JSON.stringify; los excluimos al
+      // persistir para no escribir basura ni intentar restaurar binarios.
+      partialize: (s) => ({
+        ...s,
+        nutrition: { ...s.nutrition, planFile: null },
+        training: { ...s.training, planFile: null },
+        meals: { ...s.meals, listFile: null },
+        medical: { ...s.medical, uploads: [] },
+      }),
+    },
   ),
 );
 

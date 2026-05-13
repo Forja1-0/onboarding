@@ -3,7 +3,7 @@ import { OnboardingLayout } from "../onboarding/OnboardingLayout";
 import { Callout, Disclosure, ErrorBanner, FileDrop, Segmented } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
 import type { SessionType, TrainingDay } from "../onboarding/types";
-import { api, ApiError, ValidationError } from "../api/client";
+import { api, ApiError, ValidationError, type ParsedTrainingPlanRich } from "../api/client";
 import { useStepSave } from "../api/hooks";
 import { buildStep6Body } from "../api/transformers";
 
@@ -34,6 +34,8 @@ export function Step6Training() {
 
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const week = useMemo(() => {
     const map = new Map(t.week.map((d) => [d.day, d]));
@@ -50,9 +52,58 @@ export function Step6Training() {
   const hasText = t.planText.trim().length >= 10;
   const hasManual = sessionsCount >= 1;
   const hasParsed = !!t.parsedDays && t.parsedDays.length > 0;
-  // El back acepta plan parseado o semana manual. El archivo se acepta como
-  // referencia pero no se envía (no hay storage de uploads todavía).
-  const valid = hasParsed || hasManual;
+  // El upload del PDF persiste todo en el back de una. Si hubo upload OK,
+  // el "Continuar" igual hace PUT /step/6 para reafirmar la estructura.
+  const valid = t.parsedFromFile || hasParsed || hasManual;
+
+  const applyParsedRich = (parsed: ParsedTrainingPlanRich) => {
+    setTraining({
+      parsed: true,
+      parsedFromFile: true,
+      parsedDays: parsed.days.map((d) => ({
+        day_of_week: d.day_of_week,
+        session_type: d.session_type,
+        session_name: d.session_name,
+        duration_min: d.duration_min,
+        exercises: d.exercises.map((ex) => ({
+          name: ex.name,
+          aliases: ex.aliases,
+          sets: ex.sets,
+          reps: ex.reps,
+          load_kg: ex.load_kg,
+          notes: ex.notes,
+        })),
+      })),
+      coachName: parsed.coach_name ?? t.coachName,
+      parsedRehabRules: parsed.rehab_rules ?? [],
+      parsedRehabProtocols: (parsed.rehab_protocols ?? []).map((p) => ({
+        area: p.area,
+        summary: p.exercises_summary,
+      })),
+      parsedAlerts: {
+        stop: parsed.alerts?.stop_signals ?? [],
+        reduce: parsed.alerts?.reduce_signals ?? [],
+      },
+    });
+  };
+
+  const onFile = async (file: File | null) => {
+    setTraining({ planFile: file });
+    setUploadError(null);
+    if (!file || !userId) return;
+    setUploading(true);
+    try {
+      const { parsed } = await api.uploadTrainingPlan(userId, file);
+      applyParsedRich(parsed);
+    } catch (e) {
+      if (e instanceof ValidationError) setUploadError("El back rechazo el archivo.");
+      else if (e instanceof ApiError) setUploadError(e.message);
+      else setUploadError(e instanceof Error ? e.message : "No se pudo procesar el archivo.");
+      setTraining({ parsedFromFile: false });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const onParseText = async () => {
     if (!userId) return;
@@ -64,6 +115,7 @@ export function Step6Training() {
         parsed: true,
         parsedDays: parsed.days,
         coachName: parsed.coach_name ?? t.coachName,
+        parsedFromFile: false,
       });
     } catch (e) {
       if (e instanceof ValidationError) setParseError("Revisá el texto pegado.");
@@ -75,7 +127,11 @@ export function Step6Training() {
   };
 
   const clearParsed = () =>
-    setTraining({ parsed: false, parsedDays: null });
+    setTraining({
+      parsed: false, parsedDays: null, parsedFromFile: false,
+      parsedRehabRules: [], parsedRehabProtocols: [],
+      parsedAlerts: { stop: [], reduce: [] },
+    });
 
   const submit = () => {
     if (!valid) return;
@@ -91,15 +147,16 @@ export function Step6Training() {
       title={<>El plan que te dio <span className="font-serif italic font-normal text-f-green-glow">tu coach.</span></>}
       lede={
         <>
-          Subí el archivo o pegá el texto del WhatsApp del coach. PDF, Excel, foto, lo que tengas.
+          Subí el archivo del coach. PDF, Excel, foto del cuaderno — lo procesamos con IA y leemos
+          días, ejercicios, series, descansos, rehab, alertas. Todo.
           <br /><span className="text-f-text">La precisión acá define todo lo que sigue:</span> Forja tiene que saber qué entrenás cada día.
         </>
       }
       onContinue={submit}
-      continueDisabled={!valid || saving}
-      continueLabel={saving ? "Guardando…" : "Continuar"}
+      continueDisabled={!valid || saving || uploading}
+      continueLabel={saving ? "Guardando…" : uploading ? "Procesando archivo…" : "Continuar"}
     >
-      {/* PRIMARY: upload + paste */}
+      {/* PRIMARY: upload */}
       <div className="f-card flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 18 }}>upload_file</span>
@@ -114,12 +171,15 @@ export function Step6Training() {
         </div>
 
         <FileDrop
-          accept=".pdf,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.txt"
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
           file={t.planFile}
-          onFile={(f) => setTraining({ planFile: f })}
+          onFile={onFile}
           label="Arrastrá o tocá para subir"
-          hint="PDF, Excel, captura del WhatsApp, foto del cuaderno. Por ahora se acepta como referencia — para mandarlo al back, pegá el texto abajo."
+          hint="PDF, imagen, captura del WhatsApp, foto del cuaderno. Hasta 10 MB."
+          busy={uploading}
+          busyLabel="leyendo el plan con IA"
         />
+        {uploadError && <p className="text-[12px] text-f-red-light">{uploadError}</p>}
 
         <div className="relative my-1 text-center">
           <div className="absolute inset-y-1/2 left-0 right-0 border-t border-f-border" />
@@ -160,7 +220,7 @@ export function Step6Training() {
         </div>
       </div>
 
-      {/* Preview del parseo AI */}
+      {/* Preview del parseo (archivo o texto) */}
       {hasParsed && t.parsedDays && (
         <div className="f-card flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -172,7 +232,7 @@ export function Step6Training() {
             </button>
           </div>
           <p className="text-[12px] text-f-text2">
-            Revisá que esté bien antes de continuar. Si algo está mal, descartá y volvé a pegar el texto.
+            Revisá que esté bien antes de continuar. Si algo está mal, descartá y subí de nuevo.
           </p>
           <div className="flex flex-col gap-2">
             {t.parsedDays.map((d, i) => (
@@ -200,6 +260,34 @@ export function Step6Training() {
               </div>
             ))}
           </div>
+
+          {t.parsedFromFile && t.parsedRehabRules.length > 0 && (
+            <div className="f-card-soft !p-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3 mb-2">
+                Reglas no negociables
+              </div>
+              <ul className="flex flex-col gap-1">
+                {t.parsedRehabRules.slice(0, 6).map((r, i) => (
+                  <li key={i} className="text-[12px] text-f-text2">• {r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {t.parsedFromFile && t.parsedRehabProtocols.length > 0 && (
+            <div className="f-card-soft !p-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3 mb-2">
+                Protocolos de rehab detectados
+              </div>
+              <ul className="flex flex-col gap-1">
+                {t.parsedRehabProtocols.map((p, i) => (
+                  <li key={i} className="text-[12px] text-f-text2">
+                    <span className="text-f-text">{p.area}</span> — {p.summary}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

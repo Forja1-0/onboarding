@@ -168,30 +168,43 @@ export function Disclosure({
   );
 }
 
-/* File picker tipo "drop zone" sobrio. No sube — solo captura nombre/size.
-   El upload real al storage lo orquesta la capa /api más adelante. */
+/* File picker. Retiene el File completo (no solo nombre/size) para que la
+   capa /api lo pueda subir como multipart al back. Soporta estado "busy"
+   para mostrar feedback mientras el back lo parsea. */
 export function FileDrop({
-  accept, file, onFile, hint, label = "Subir archivo",
+  accept, file, onFile, hint, label = "Subir archivo", busy, busyLabel,
 }: {
   accept?: string;
-  file: { name: string; size: number } | null;
-  onFile: (f: { name: string; size: number } | null) => void;
+  file: File | null;
+  onFile: (f: File | null) => void;
   hint?: ReactNode;
   label?: string;
+  busy?: boolean;
+  busyLabel?: string;
 }) {
   const inputId = `file-${Math.random().toString(36).slice(2, 8)}`;
   return (
     <div>
       {file ? (
         <div className="f-card !p-3 flex items-center gap-3">
-          <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 20 }}>description</span>
+          <span
+            className={`material-symbols-outlined ${busy ? "text-f-text2 animate-pulse" : "text-f-green-light"}`}
+            style={{ fontSize: 20 }}
+          >
+            {busy ? "hourglass_top" : "description"}
+          </span>
           <div className="flex-1 min-w-0">
             <div className="text-[13px] text-f-text truncate">{file.name}</div>
-            <div className="font-mono text-[10px] text-f-text3">{Math.round(file.size / 1024)} KB</div>
+            <div className="font-mono text-[10px] text-f-text3">
+              {Math.round(file.size / 1024)} KB
+              {busy && busyLabel ? ` · ${busyLabel}` : ""}
+            </div>
           </div>
-          <button className="f-btn-ghost text-f-red-light" onClick={() => onFile(null)} aria-label="Quitar">
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
-          </button>
+          {!busy && (
+            <button className="f-btn-ghost text-f-red-light" onClick={() => onFile(null)} aria-label="Quitar">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+            </button>
+          )}
         </div>
       ) : (
         <label htmlFor={inputId}
@@ -206,7 +219,8 @@ export function FileDrop({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) onFile({ name: f.name, size: f.size });
+              if (f) onFile(f);
+              e.target.value = ""; // permitir re-subir mismo archivo
             }}
           />
         </label>
