@@ -72,11 +72,24 @@ export function buildStep2Body(m: MedicalHistory) {
 }
 
 /* ----------------- Step 3 -----------------
-   El back acepta competition | recomp | performance. La UI tiene tipos por
-   deporte (running, trail, etc.) — todos los casos del onboarding son
-   competiciones con fecha, así que mapeamos a "competition". */
+   El back acepta competition | recomp | performance | personal_goal.
+   Si goal.mode = "personal" mandamos shape amateur con goal_kind +
+   metric dinamico. Si mode = "competition" mandamos el shape elite
+   original (mapeado a "competition"). */
 
 export function buildStep3Body(g: Goal) {
+  if (g.mode === "personal") {
+    const p = g.personal;
+    return {
+      event_type: "personal_goal" as const,
+      event_date: g.eventDate ? g.eventDate : null,
+      goal_kind: p.kind,
+      goal_metric_value: p.metricValue,
+      goal_metric_unit: p.metricUnit,
+      ...(p.metricLabel.trim() ? { goal_metric_label: p.metricLabel.trim().slice(0, 200) } : {}),
+      ...(g.notes.trim() ? { objective_notes: g.notes.trim().slice(0, 500) } : {}),
+    };
+  }
   const distance = serializeDistance(g.distance, g.competitionType);
   return {
     event_type: "competition" as const,

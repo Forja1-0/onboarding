@@ -4,6 +4,8 @@ import { useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep7Body } from "../api/transformers";
 import type { FrequentMeal } from "../onboarding/types";
+import { isAmateur } from "../onboarding/mode";
+import { useNavigate } from "react-router-dom";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -30,6 +32,11 @@ export function Step7Meals() {
 
   const submit = () => { if (!valid) return; save(buildStep7Body(m), "consentimiento"); };
 
+  const nav = useNavigate();
+  const onSkip = isAmateur()
+    ? () => nav("/onboarding/consentimiento")
+    : undefined;
+
   return (
     <OnboardingLayout
       step={7}
@@ -45,6 +52,8 @@ export function Step7Meals() {
       onContinue={submit}
       continueDisabled={!valid || busy}
       continueLabel={busy ? "Guardando…" : "Continuar"}
+      onSkip={onSkip}
+      skipLabel="Más tarde"
     >
       {/* Si en paso 4 ya subió plan del nutri, aclaramos el matiz */}
       {nutritionistPlanFile && (

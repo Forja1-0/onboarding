@@ -59,12 +59,34 @@ export interface DistanceData {
   custom?: CustomDistance[];
 }
 
+/* --------- Meta libre (amateur) ---------
+   El amateur no compite — fija una meta personal con metrica dinamica.
+   Ej: "perder 5 kg", "ganar 3kg masa muscular", "correr 10k". */
+export type GoalKind =
+  | "lose_weight"
+  | "gain_muscle"
+  | "improve_time"
+  | "reach_distance"
+  | "custom";
+
+export type GoalMetricUnit = "kg" | "km" | "min" | "reps" | "percent" | "custom";
+
+export interface PersonalGoal {
+  kind: GoalKind | null;
+  metricValue: number | null;
+  metricUnit: GoalMetricUnit | null;
+  metricLabel: string; // texto libre cuando kind === "custom"
+}
+
 export interface Goal {
+  /** "competition" = competidor (path elite); "personal" = meta libre (amateur). */
+  mode: "competition" | "personal";
   competitionType: CompetitionType | null;
   eventName: string;
-  eventDate: string; // ISO yyyy-mm-dd
+  eventDate: string; // ISO yyyy-mm-dd (puede ser "" en amateur si no hay deadline)
   distance: DistanceData;
   notes: string;
+  personal: PersonalGoal;
 }
 
 /* ----- Nutrition (incluye archivo del nutricionista, ya que el backend

@@ -3,8 +3,10 @@ import { Callout, ErrorBanner, FieldError, Segmented, SuffixInput } from "../onb
 import { useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep3Body } from "../api/transformers";
+import { isAmateur } from "../onboarding/mode";
 import {
-  CompetitionType, CustomDistance, DistanceData, TRI_PRESETS, TriPreset,
+  CompetitionType, CustomDistance, DistanceData, GoalKind, GoalMetricUnit,
+  TRI_PRESETS, TriPreset,
 } from "../onboarding/types";
 
 const TYPES: { value: CompetitionType; label: string; icon: string }[] = [
@@ -21,17 +23,40 @@ const TYPES: { value: CompetitionType; label: string; icon: string }[] = [
 const TYPES_WITHOUT_DISTANCE: CompetitionType[] = ["strength", "team"];
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+const PERSONAL_KIND_OPTIONS: { value: GoalKind; label: string; icon: string; defaultUnit: GoalMetricUnit }[] = [
+  { value: "lose_weight",    label: "Perder peso",       icon: "trending_down",  defaultUnit: "kg" },
+  { value: "gain_muscle",    label: "Ganar masa",         icon: "fitness_center", defaultUnit: "kg" },
+  { value: "improve_time",   label: "Mejorar tiempo",     icon: "timer",          defaultUnit: "min" },
+  { value: "reach_distance", label: "Llegar a distancia", icon: "directions_run", defaultUnit: "km" },
+  { value: "custom",         label: "Otra",               icon: "edit",           defaultUnit: "custom" },
+];
+
+const UNIT_OPTIONS: { value: GoalMetricUnit; label: string }[] = [
+  { value: "kg",      label: "kg" },
+  { value: "km",      label: "km" },
+  { value: "min",     label: "min" },
+  { value: "reps",    label: "reps" },
+  { value: "percent", label: "%" },
+];
+
 export function Step3Goal() {
   const g = useOnboarding((s) => s.goal);
   const setGoal = useOnboarding((s) => s.setGoal);
   const { save, busy, error, fieldErrors } = useStepSave(3);
+  const amateur = isAmateur();
 
   const today = new Date().toISOString().slice(0, 10);
   const days = g.eventDate
     ? Math.max(0, Math.ceil((new Date(g.eventDate).getTime() - Date.now()) / 86400000))
     : null;
 
-  const valid = !!g.competitionType && !!g.eventName.trim() && !!g.eventDate;
+  const competitionValid = !!g.competitionType && !!g.eventName.trim() && !!g.eventDate;
+  const personalValid =
+    !!g.personal.kind &&
+    (g.personal.kind === "custom"
+      ? !!g.personal.metricLabel.trim()
+      : g.personal.metricValue != null && !!g.personal.metricUnit);
+  const valid = g.mode === "competition" ? competitionValid : personalValid;
 
   const submit = () => {
     if (!valid) return;
@@ -39,7 +64,6 @@ export function Step3Goal() {
   };
 
   const onSelectType = (v: CompetitionType) => {
-    // Reseteamos la distancia cuando cambia el tipo, para evitar mezclar shapes.
     const distance: DistanceData = (() => {
       if (v === "triathlon") {
         const p = TRI_PRESETS.olimpico;
@@ -52,64 +76,183 @@ export function Step3Goal() {
     setGoal({ competitionType: v, distance });
   };
 
+  const setPersonal = (patch: Partial<typeof g.personal>) =>
+    setGoal({ personal: { ...g.personal, ...patch } });
+
+  const onSelectKind = (kind: GoalKind) => {
+    const def = PERSONAL_KIND_OPTIONS.find((k) => k.value === kind);
+    setPersonal({
+      kind,
+      metricUnit: kind === "custom" ? "custom" : def?.defaultUnit ?? null,
+      // Reset value cuando cambia el tipo (km != kg).
+      metricValue: null,
+      metricLabel: kind === "custom" ? g.personal.metricLabel : "",
+    });
+  };
+
   return (
     <OnboardingLayout
       step={3}
-      eyebrow="Objetivo deportivo · 1 min"
-      title={<>¿Hacia <span className="font-serif italic font-normal text-f-green-glow">qué fecha</span> te estás forjando?</>}
-      lede="Esto alimenta el countdown de tu Journey. Sin fecha, no hay urgencia. Sin urgencia, no hay sistema."
+      eyebrow="Objetivo · 1 min"
+      title={
+        amateur
+          ? <>¿Cuál es <span className="font-serif italic font-normal text-f-green-glow">tu meta</span>?</>
+          : <>¿Hacia <span className="font-serif italic font-normal text-f-green-glow">qué fecha</span> te estás forjando?</>
+      }
+      lede={
+        amateur
+          ? "Una meta concreta — perder kilos, ganar masa, llegar a una distancia. Eso es lo que el bot va a usar para empujarte."
+          : "Esto alimenta el countdown de tu Journey. Sin fecha, no hay urgencia. Sin urgencia, no hay sistema."
+      }
       onContinue={submit}
       continueDisabled={!valid || busy}
       continueLabel={busy ? "Guardando…" : "Continuar"}
     >
-      <div className="f-card flex flex-col gap-4">
-        <div>
-          <label className="f-label">Tipo de competencia</label>
-          <Segmented<CompetitionType>
-            value={g.competitionType}
-            onChange={onSelectType}
-            options={TYPES}
-            columns={2}
-          />
+      {/* Toggle competition / personal — visible siempre, pero el default
+          y el orden cambian segun amateur/elite. */}
+      <div className="f-card-soft">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-f-text3 mb-2">
+          Tipo de objetivo
         </div>
-
-        <div>
-          <label className="f-label">Nombre del evento</label>
-          <input className="f-input" placeholder="Maratón de Buenos Aires"
-                 value={g.eventName} onChange={(e) => setGoal({ eventName: e.target.value })} />
-          <FieldError msg={fieldErrors.event_name} />
-        </div>
-
-        <div>
-          <label className="f-label">Fecha</label>
-          <input type="date" className="f-input" min={today}
-                 value={g.eventDate} onChange={(e) => setGoal({ eventDate: e.target.value })} />
-          <FieldError msg={fieldErrors.event_date} />
-        </div>
-
-        {g.competitionType && !TYPES_WITHOUT_DISTANCE.includes(g.competitionType) && (
-          <DistanceEditor
-            type={g.competitionType}
-            value={g.distance}
-            onChange={(distance) => setGoal({ distance })}
-          />
-        )}
-
-        {g.competitionType && TYPES_WITHOUT_DISTANCE.includes(g.competitionType) && (
-          <p className="f-helper">
-            Para fuerza y deportes de equipo no se carga distancia. Si necesitás
-            registrar metas de carga o partidos, lo ajustás después con el bot.
-          </p>
-        )}
-
-        <div>
-          <label className="f-label">Notas (opcional)</label>
-          <textarea className="f-input" rows={2} placeholder="Sub-3:30, llegar entero, primera maratón…"
-            value={g.notes} onChange={(e) => setGoal({ notes: e.target.value })} />
-        </div>
+        <Segmented<"competition" | "personal">
+          value={g.mode}
+          onChange={(v) => setGoal({ mode: v })}
+          options={
+            amateur
+              ? [
+                  { value: "personal",    label: "Meta personal" },
+                  { value: "competition", label: "Competencia" },
+                ]
+              : [
+                  { value: "competition", label: "Competencia" },
+                  { value: "personal",    label: "Meta personal" },
+                ]
+          }
+          columns={2}
+        />
       </div>
 
-      {days !== null && g.eventName && (
+      {g.mode === "competition" && (
+        <div className="f-card flex flex-col gap-4">
+          <div>
+            <label className="f-label">Tipo de competencia</label>
+            <Segmented<CompetitionType>
+              value={g.competitionType}
+              onChange={onSelectType}
+              options={TYPES}
+              columns={2}
+            />
+          </div>
+
+          <div>
+            <label className="f-label">Nombre del evento</label>
+            <input className="f-input" placeholder="Maratón de Buenos Aires"
+                   value={g.eventName} onChange={(e) => setGoal({ eventName: e.target.value })} />
+            <FieldError msg={fieldErrors.event_name} />
+          </div>
+
+          <div>
+            <label className="f-label">Fecha</label>
+            <input type="date" className="f-input" min={today}
+                   value={g.eventDate} onChange={(e) => setGoal({ eventDate: e.target.value })} />
+            <FieldError msg={fieldErrors.event_date} />
+          </div>
+
+          {g.competitionType && !TYPES_WITHOUT_DISTANCE.includes(g.competitionType) && (
+            <DistanceEditor
+              type={g.competitionType}
+              value={g.distance}
+              onChange={(distance) => setGoal({ distance })}
+            />
+          )}
+
+          {g.competitionType && TYPES_WITHOUT_DISTANCE.includes(g.competitionType) && (
+            <p className="f-helper">
+              Para fuerza y deportes de equipo no se carga distancia. Si necesitás
+              registrar metas de carga o partidos, lo ajustás después con el bot.
+            </p>
+          )}
+
+          <div>
+            <label className="f-label">Notas (opcional)</label>
+            <textarea className="f-input" rows={2} placeholder="Sub-3:30, llegar entero, primera maratón…"
+              value={g.notes} onChange={(e) => setGoal({ notes: e.target.value })} />
+          </div>
+        </div>
+      )}
+
+      {g.mode === "personal" && (
+        <div className="f-card flex flex-col gap-4">
+          <div>
+            <label className="f-label">¿Qué querés lograr?</label>
+            <Segmented<GoalKind>
+              value={g.personal.kind}
+              onChange={onSelectKind}
+              options={PERSONAL_KIND_OPTIONS}
+              columns={2}
+            />
+            <FieldError msg={fieldErrors.goal_kind} />
+          </div>
+
+          {g.personal.kind && g.personal.kind !== "custom" && (
+            <div>
+              <label className="f-label">Cantidad objetivo</label>
+              <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 110px" }}>
+                <SuffixInput
+                  value={g.personal.metricValue}
+                  onChange={(v) => setPersonal({ metricValue: v ? Number(v) : null })}
+                  suffix={g.personal.metricUnit ?? ""}
+                  placeholder={g.personal.kind === "lose_weight" ? "5" : "3"}
+                  step={0.1}
+                />
+                <select
+                  className="f-input !pr-2"
+                  value={g.personal.metricUnit ?? ""}
+                  onChange={(e) => setPersonal({ metricUnit: e.target.value as GoalMetricUnit })}
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="f-helper">
+                Por ejemplo: <span className="text-f-text">5 kg</span>,{" "}
+                <span className="text-f-text">3 kg de masa</span>,{" "}
+                <span className="text-f-text">10 km</span>, etc.
+              </p>
+            </div>
+          )}
+
+          {g.personal.kind === "custom" && (
+            <div>
+              <label className="f-label">Tu meta en una frase</label>
+              <input
+                className="f-input"
+                placeholder="Hacer 10 dominadas seguidas / Correr 5k sin parar / …"
+                value={g.personal.metricLabel}
+                onChange={(e) => setPersonal({ metricLabel: e.target.value })}
+              />
+              <FieldError msg={fieldErrors.goal_metric_label} />
+            </div>
+          )}
+
+          <div>
+            <label className="f-label">Deadline (opcional)</label>
+            <input type="date" className="f-input" min={today}
+                   value={g.eventDate} onChange={(e) => setGoal({ eventDate: e.target.value })} />
+            <p className="f-helper">Si tenés fecha tope dejala. Si no, no hace falta.</p>
+          </div>
+
+          <div>
+            <label className="f-label">Por qué te importa (opcional)</label>
+            <textarea className="f-input" rows={2}
+              placeholder="Para sentirme bien con mi cuerpo, para acompañar a mi hijo a correr, etc."
+              value={g.notes} onChange={(e) => setGoal({ notes: e.target.value })} />
+          </div>
+        </div>
+      )}
+
+      {g.mode === "competition" && days !== null && g.eventName && (
         <div className="f-card relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-[3px]"
                style={{ background: "linear-gradient(180deg, #5B8A64 0%, #7A2832 100%)" }} />
@@ -126,7 +269,9 @@ export function Step3Goal() {
       {error && <ErrorBanner msg={error} />}
 
       <Callout>
-        Una fecha. Un nombre. Eso es lo único que separa entrenar de prepararte.
+        {g.mode === "personal"
+          ? "Una meta clara. Una pista en el suelo. Después solo es caminar."
+          : "Una fecha. Un nombre. Eso es lo único que separa entrenar de prepararte."}
       </Callout>
     </OnboardingLayout>
   );

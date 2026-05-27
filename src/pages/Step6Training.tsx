@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { OnboardingLayout } from "../onboarding/OnboardingLayout";
 import { Callout, Disclosure, ErrorBanner, FileDrop, Segmented } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
@@ -6,6 +7,7 @@ import type { SessionType, TrainingDay } from "../onboarding/types";
 import { api, ApiError, ValidationError, type ParsedTrainingPlanRich } from "../api/client";
 import { useStepSave } from "../api/hooks";
 import { buildStep6Body } from "../api/transformers";
+import { isAmateur } from "../onboarding/mode";
 
 const DAYS: TrainingDay["day"][] = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"];
 const DAY_FULL: Record<TrainingDay["day"], string> = {
@@ -140,6 +142,13 @@ export function Step6Training() {
       : null), "comidas-frecuentes");
   };
 
+  const nav = useNavigate();
+  // Amateur: salto = no hay plan estructurado, el usuario va a loguear
+  // sesiones libremente desde WhatsApp.
+  const onSkip = isAmateur()
+    ? () => nav("/onboarding/comidas-frecuentes")
+    : undefined;
+
   return (
     <OnboardingLayout
       step={6}
@@ -155,6 +164,8 @@ export function Step6Training() {
       onContinue={submit}
       continueDisabled={!valid || saving || uploading}
       continueLabel={saving ? "Guardando…" : uploading ? "Procesando archivo…" : "Continuar"}
+      onSkip={onSkip}
+      skipLabel="Sin plan"
     >
       {/* PRIMARY: upload */}
       <div className="f-card flex flex-col gap-4">

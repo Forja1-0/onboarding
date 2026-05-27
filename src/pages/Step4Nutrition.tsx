@@ -5,12 +5,16 @@ import { useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep4Body } from "../api/transformers";
 import { api, ApiError, ValidationError, type ParsedNutritionPlanRich } from "../api/client";
+import { isAmateur } from "../onboarding/mode";
+import { useNavigate } from "react-router-dom";
 
 export function Step4Nutrition() {
   const n = useOnboarding((s) => s.nutrition);
   const setNutrition = useOnboarding((s) => s.setNutrition);
   const userId = useOnboarding((s) => s.userId);
   const { save, busy, error, fieldErrors } = useStepSave(4);
+  const amateur = isAmateur();
+  const nav = useNavigate();
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -25,6 +29,12 @@ export function Step4Nutrition() {
   const driftWarn = drift > (n.kcal ?? 0) * 0.08; // >8% off
 
   const submit = () => { if (!valid) return; save(buildStep4Body(n), "restricciones"); };
+
+  // Amateur: permitir saltear este paso (sin plan macro estructurado el bot
+  // igual loguea comida y arma el resumen nocturno).
+  const onSkip = amateur
+    ? () => nav("/onboarding/restricciones")
+    : undefined;
 
   const applyParsed = (parsed: ParsedNutritionPlanRich) => {
     setNutrition({
@@ -72,6 +82,8 @@ export function Step4Nutrition() {
       onContinue={submit}
       continueDisabled={!valid || busy || uploading}
       continueLabel={busy ? "Guardando…" : uploading ? "Procesando archivo…" : "Continuar"}
+      onSkip={onSkip}
+      skipLabel="Sin plan"
     >
       <div className="f-card flex flex-col gap-3">
         <div className="flex items-center gap-2">

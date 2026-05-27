@@ -4,12 +4,21 @@ import type {
   Consent, DietaryRestrictions, Goal, MealsData,
   MedicalHistory, NutritionPlan, OnboardingState, TrainingPlan, UserData,
 } from "./types";
+import { isAmateur } from "./mode";
 
 const initial: OnboardingState = {
   userId: null,
   user: { fullName: "", age: null, sex: null, weightKg: null, heightCm: null, bodyFatPct: null, email: "", phoneWa: "" },
   medical: { activeInjuries: "", pastInjuries: "", chronicConditions: "", allergies: "", medication: "", uploads: [] },
-  goal: { competitionType: null, eventName: "", eventDate: "", distance: {}, notes: "" },
+  goal: {
+    mode: isAmateur() ? "personal" : "competition",
+    competitionType: null,
+    eventName: "",
+    eventDate: "",
+    distance: {},
+    notes: "",
+    personal: { kind: null, metricValue: null, metricUnit: null, metricLabel: "" },
+  },
   nutrition: {
     kcal: null, proteinG: null, carbsG: null, fatG: null,
     perMealDistribution: false, nutritionistName: "", planFile: null,

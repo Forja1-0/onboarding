@@ -13,11 +13,16 @@ interface Props {
   onContinue?: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
+  /** Si esta definido, muestra un boton "Saltar" entre Atras y Continuar.
+      Pensado para los steps opcionales del modo amateur (4, 6, 7). */
+  onSkip?: () => void;
+  skipLabel?: string;
 }
 
 export function OnboardingLayout({
   step, eyebrow, title, lede, children,
   onBack, onContinue, continueLabel = "Continuar", continueDisabled = false,
+  onSkip, skipLabel = "Saltar",
 }: Props) {
   const nav = useNavigate();
   const completed = useOnboarding((s) => s.completedSteps);
@@ -61,9 +66,14 @@ export function OnboardingLayout({
       {/* BOTTOM BAR */}
       <footer className="fixed inset-x-0 bottom-0 z-40 backdrop-blur-md bg-[#09090Bcc] border-t border-f-border"
               style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <div className="max-w-[460px] mx-auto px-5 sm:px-[22px] py-3 grid gap-2"
-             style={{ gridTemplateColumns: "1fr 2fr" }}>
+        <div
+          className="max-w-[460px] mx-auto px-5 sm:px-[22px] py-3 grid gap-2"
+          style={{ gridTemplateColumns: onSkip ? "1fr 1fr 2fr" : "1fr 2fr" }}
+        >
           <button className="f-btn f-btn-secondary" onClick={goBack}>Atrás</button>
+          {onSkip && (
+            <button className="f-btn f-btn-secondary" onClick={onSkip}>{skipLabel}</button>
+          )}
           <button
             className="f-btn f-btn-primary"
             onClick={onContinue}

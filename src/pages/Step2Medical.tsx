@@ -3,11 +3,13 @@ import { Callout, ErrorBanner } from "../onboarding/components";
 import { useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep2Body } from "../api/transformers";
+import { isAmateur } from "../onboarding/mode";
 
 export function Step2Medical() {
   const m = useOnboarding((s) => s.medical);
   const setMedical = useOnboarding((s) => s.setMedical);
   const { save, busy, error } = useStepSave(2);
+  const amateur = isAmateur();
 
   const submit = () => save(buildStep2Body(m), "objetivo");
 
@@ -54,37 +56,41 @@ export function Step2Medical() {
         </div>
       </div>
 
-      <div className="f-card">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="material-symbols-outlined text-f-text2" style={{ fontSize: 18 }}>upload_file</span>
-          <div className="font-sans font-medium text-[14px] text-f-text">Estudios (opcional)</div>
-          <span className="f-pill f-pill-warn ml-auto">Opcional</span>
+      {/* Bloque de uploads de estudios medicos: solo elite.
+          El amateur no necesita subir ECG/RX/sangre. */}
+      {!amateur && (
+        <div className="f-card">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-f-text2" style={{ fontSize: 18 }}>upload_file</span>
+            <div className="font-sans font-medium text-[14px] text-f-text">Estudios (opcional)</div>
+            <span className="f-pill f-pill-warn ml-auto">Opcional</span>
+          </div>
+          <p className="text-[12px] text-f-text2 mb-3">
+            Subí tu último ECG, RX o análisis de sangre si lo tenés a mano. Forja los lee y los tiene en cuenta.
+          </p>
+          <label className="f-btn f-btn-secondary w-full cursor-pointer">
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>attach_file</span>
+            <span>Subir archivo</span>
+            <input type="file" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
+          </label>
+          {m.uploads.length > 0 && (
+            <>
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {m.uploads.map((f, i) => (
+                  <li key={i} className="flex items-center gap-2 text-[12px] text-f-text2">
+                    <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 14 }}>check_circle</span>
+                    <span className="truncate">{f.name}</span>
+                    <span className="ml-auto font-mono text-f-text3">{Math.round(f.size / 1024)} KB</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-f-text3">
+                Los archivos se almacenarán cuando habilitemos el storage. Por ahora se registra solo la referencia.
+              </p>
+            </>
+          )}
         </div>
-        <p className="text-[12px] text-f-text2 mb-3">
-          Subí tu último ECG, RX o análisis de sangre si lo tenés a mano. Forja los lee y los tiene en cuenta.
-        </p>
-        <label className="f-btn f-btn-secondary w-full cursor-pointer">
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>attach_file</span>
-          <span>Subir archivo</span>
-          <input type="file" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
-        </label>
-        {m.uploads.length > 0 && (
-          <>
-            <ul className="mt-3 flex flex-col gap-1.5">
-              {m.uploads.map((f, i) => (
-                <li key={i} className="flex items-center gap-2 text-[12px] text-f-text2">
-                  <span className="material-symbols-outlined text-f-green-light" style={{ fontSize: 14 }}>check_circle</span>
-                  <span className="truncate">{f.name}</span>
-                  <span className="ml-auto font-mono text-f-text3">{Math.round(f.size / 1024)} KB</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[11px] text-f-text3">
-              Los archivos se almacenarán cuando habilitemos el storage. Por ahora se registra solo la referencia.
-            </p>
-          </>
-        )}
-      </div>
+      )}
 
       {error && <ErrorBanner msg={error} />}
 

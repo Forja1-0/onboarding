@@ -120,22 +120,24 @@ describe("buildStep2Body", () => {
 /* ============ Step 3 ============ */
 describe("buildStep3Body", () => {
   const baseGoal: Goal = {
+    mode: "competition",
     competitionType: "running",
     eventName: "Maratón BA",
     eventDate: "2026-09-22",
     distance: { single: { value: 42.2, unit: "km" } },
     notes: "Sub 3:30",
+    personal: { kind: null, metricValue: null, metricUnit: null, metricLabel: "" },
   };
 
-  it("mapea siempre a event_type 'competition'", () => {
+  it("mapea modo competition a event_type 'competition'", () => {
     const body = buildStep3Body(baseGoal);
     expect(body.event_type).toBe("competition");
   });
 
   it("serializa la distance como string", () => {
     const body = buildStep3Body(baseGoal);
-    expect(typeof body.distance).toBe("string");
-    expect(body.distance).toContain("42.2");
+    expect(typeof (body as any).distance).toBe("string");
+    expect((body as any).distance).toContain("42.2");
   });
 
   it("manda event_date YYYY-MM-DD", () => {
@@ -151,6 +153,42 @@ describe("buildStep3Body", () => {
   it("omite distance si el tipo no la requiere (strength/team)", () => {
     const body = buildStep3Body({ ...baseGoal, competitionType: "strength", distance: {} });
     expect(body).not.toHaveProperty("distance");
+  });
+
+  it("modo personal: mapea a personal_goal con goal_kind y metricas", () => {
+    const body = buildStep3Body({
+      ...baseGoal,
+      mode: "personal",
+      personal: { kind: "lose_weight", metricValue: 5, metricUnit: "kg", metricLabel: "" },
+    });
+    expect(body.event_type).toBe("personal_goal");
+    expect((body as any).goal_kind).toBe("lose_weight");
+    expect((body as any).goal_metric_value).toBe(5);
+    expect((body as any).goal_metric_unit).toBe("kg");
+  });
+
+  it("modo personal custom: pasa label trimeado en goal_metric_label", () => {
+    const body = buildStep3Body({
+      ...baseGoal,
+      mode: "personal",
+      personal: {
+        kind: "custom",
+        metricValue: null,
+        metricUnit: "custom",
+        metricLabel: "  Hacer 10 dominadas seguidas  ",
+      },
+    });
+    expect((body as any).goal_metric_label).toBe("Hacer 10 dominadas seguidas");
+  });
+
+  it("modo personal sin deadline: event_date es null", () => {
+    const body = buildStep3Body({
+      ...baseGoal,
+      mode: "personal",
+      eventDate: "",
+      personal: { kind: "lose_weight", metricValue: 5, metricUnit: "kg", metricLabel: "" },
+    });
+    expect(body.event_date).toBeNull();
   });
 });
 
