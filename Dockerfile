@@ -1,5 +1,5 @@
 # Stage 1: Construcción (Build)
-FROM node:20-alpine AS build
+FROM public.ecr.aws/docker/library/node:20-alpine AS build
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN echo "Building with VITE_API_URL=${VITE_API_URL}" && npm run build
 
 # Stage 2: Servidor (Nginx)
-FROM nginx:alpine
+FROM public.ecr.aws/docker/library/nginx:alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
