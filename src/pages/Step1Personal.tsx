@@ -3,6 +3,7 @@ import { Callout, ErrorBanner, FieldError, Segmented, SuffixInput } from "../onb
 import { estimateTMB, useOnboarding } from "../onboarding/store";
 import { useStepSave } from "../api/hooks";
 import { buildStep1Body } from "../api/transformers";
+import { isAmateur } from "../onboarding/mode";
 
 export function Step1Personal() {
   const u = useOnboarding((s) => s.user);
@@ -15,7 +16,7 @@ export function Step1Personal() {
 
   const submit = () => {
     if (!valid) return;
-    save(buildStep1Body(u), "historia-clinica");
+    save(buildStep1Body(u), isAmateur() ? "objetivo" : "historia-clinica");
   };
 
   return (

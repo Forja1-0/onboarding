@@ -5,6 +5,7 @@ import { Wordmark } from "../onboarding/components";
 import { ONBOARDING_STEPS } from "../onboarding/types";
 import { useOnboarding } from "../onboarding/store";
 import { api, ApiError } from "../api/client";
+import { isAmateur } from "../onboarding/mode";
 
 export function Welcome() {
   const nav = useNavigate();
@@ -13,6 +14,11 @@ export function Welcome() {
   const reset = useOnboarding((s) => s.reset);
   const [busy, setBusy] = useState<"start" | "resume" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const amateur = isAmateur();
+  const visibleSteps = amateur
+    ? ONBOARDING_STEPS.filter((s) => s.idx !== 2)
+    : ONBOARDING_STEPS;
 
   const start = async () => {
     setError(null);
@@ -38,7 +44,8 @@ export function Welcome() {
     setBusy("resume");
     try {
       const state = await api.getOnboarding(userId);
-      const next = Math.min(state.onboarding_step + 1, 8);
+      let next = Math.min(state.onboarding_step + 1, 8);
+      if (amateur && next === 2) next = 3;
       const target = ONBOARDING_STEPS.find((s) => s.idx === next);
       nav(target ? `/onboarding/${target.slug}` : "/onboarding/consentimiento");
     } catch (e) {
@@ -65,7 +72,7 @@ export function Welcome() {
       <main className="flex-1 flex items-center">
         <div className="max-w-[460px] w-full mx-auto px-5 sm:px-[22px] py-6">
           <div className="font-mono text-[10px] tracking-[0.06em] uppercase text-f-green-light mb-4 f-fade-up" style={{ animationDelay: "60ms" }}>
-            Onboarding · 8 pasos · ~10 min
+            Onboarding · {visibleSteps.length} pasos · ~{amateur ? 8 : 10} min
           </div>
 
           <h1 className="font-sans font-bold text-[30px] sm:text-[34px] leading-[1.1] text-f-text f-fade-up" style={{ animationDelay: "120ms" }}>
@@ -79,9 +86,9 @@ export function Welcome() {
           </p>
 
           <div className="mt-8 grid gap-2.5 f-fade-up" style={{ animationDelay: "280ms" }}>
-            {ONBOARDING_STEPS.map((s) => (
+            {visibleSteps.map((s, i) => (
               <div key={s.idx} className="flex items-center gap-3 text-[13px] text-f-text2 min-h-[28px]">
-                <span className="font-mono text-[10px] text-f-text3 w-5 shrink-0">0{s.idx}</span>
+                <span className="font-mono text-[10px] text-f-text3 w-5 shrink-0">0{i + 1}</span>
                 <span className="text-f-text truncate">{s.title}</span>
                 <span className="ml-auto font-mono text-[10px] text-f-text3 uppercase shrink-0">{s.eyebrow.split("·")[1]?.trim()}</span>
               </div>
