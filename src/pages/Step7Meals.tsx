@@ -62,7 +62,7 @@ export function Step7Meals() {
           <div className="text-[13px] leading-[1.5] text-f-text">
             Subiste el plan de tu nutricionista (<span className="font-mono text-f-text2">{nutritionistPlanFile.name}</span>).
             Ese plan da los macros generales — no las comidas. <span className="text-f-text2">Acá igual te conviene cargar las
-            que vos repetís</span>: el bot las usa para que no tengas que escribir gramo por gramo cada vez.
+            que vos repetís</span>: el bot las usa para que no tengas que escribirlas ingrediente por ingrediente cada vez.
           </div>
         </div>
       )}
@@ -100,13 +100,13 @@ export function Step7Meals() {
           <textarea
             className="f-input"
             rows={6}
-            placeholder={"Desayuno 1\n3 huevos 180g\n2 tostadas integrales 60g\nCafé con leche 200ml\n\nPre-entreno\nBanana 120g\nAvena 50g\n..."}
+            placeholder={"Desayuno 1\nHuevos\nTostadas integrales\nCafé con leche\n\nPre-entreno\nBanana\nAvena\n..."}
             value={m.listText}
             onChange={(e) => setMeals({ listText: e.target.value })}
             maxLength={8000}
           />
           <div className="flex items-center justify-between mt-1">
-            <p className="f-helper">Una etiqueta por comida (Desayuno 1, Pre-entreno, etc.) y los ingredientes con gramos.</p>
+            <p className="f-helper">Una etiqueta por comida (Desayuno 1, Pre-entreno, etc.) y los ingredientes — uno por línea.</p>
             <span className="font-mono text-[10px] text-f-text3">{m.listText.length}/8000</span>
           </div>
         </div>
@@ -115,7 +115,7 @@ export function Step7Meals() {
       {/* SECONDARY: editor manual */}
       <Disclosure
         title="Editor manual — armá tus comidas tipo"
-        subtitle="Una etiqueta + ingredientes con gramos por comida. Es lo único que el bot va a poder usar para loguear rápido."
+        subtitle="Una etiqueta + los ingredientes que la componen. Sin gramos — eso lo afinamos después desde el chat."
         accent="warn"
         defaultOpen={true}
       >
@@ -171,7 +171,7 @@ function MealCard({ meal, idx, onChange, onRemove }: {
   onChange: (p: Partial<FrequentMeal>) => void;
   onRemove: () => void;
 }) {
-  const updateIng = (i: number, patch: Partial<{ name: string; grams: number | null }>) => {
+  const updateIng = (i: number, patch: Partial<{ name: string }>) => {
     const next = meal.ingredients.map((ing, j) => (j === i ? { ...ing, ...patch } : ing));
     onChange({ ingredients: next });
   };
@@ -193,16 +193,10 @@ function MealCard({ meal, idx, onChange, onRemove }: {
 
       <div className="flex flex-col gap-2">
         {meal.ingredients.map((ing, i) => (
-          <div key={i} className="grid gap-2" style={{ gridTemplateColumns: "1fr 90px 32px" }}>
-            <input className="f-input !h-10" placeholder="Ingrediente"
+          <div key={i} className="grid gap-2" style={{ gridTemplateColumns: "1fr 32px" }}>
+            <input className="f-input !h-10" placeholder="Ingrediente — ej: banana, huevos, avena"
                    value={ing.name}
                    onChange={(e) => updateIng(i, { name: e.target.value })} />
-            <div className="f-field">
-              <input type="number" className="f-input !h-10 has-suffix" placeholder="0"
-                     value={ing.grams ?? ""}
-                     onChange={(e) => updateIng(i, { grams: e.target.value ? Number(e.target.value) : null })} />
-              <span className="f-suffix">g</span>
-            </div>
             <button className="f-btn-ghost h-10 px-0" onClick={() => removeIng(i)} aria-label="Quitar ingrediente">
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
             </button>
