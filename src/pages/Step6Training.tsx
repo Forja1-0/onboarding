@@ -50,9 +50,14 @@ export function Step6Training() {
     setTraining({ week: week.map((d) => (d.day === day ? { ...d, ...patch } : d)) });
   };
 
+  const amateur = isAmateur();
   const sessionsCount = week.filter((d) => d.type !== "rest").length;
   const hasText = t.planText.trim().length >= 10;
-  const hasManual = sessionsCount >= 1;
+  // En amateur el "detalle" es el nombre del entrenamiento (ej "pecho/triceps")
+  // y es obligatorio para que la sesion sirva. Hora/duracion siguen opcionales.
+  const hasManual = amateur
+    ? week.some((d) => d.type !== "rest" && d.description.trim().length > 0)
+    : sessionsCount >= 1;
   const hasParsed = !!t.parsedDays && t.parsedDays.length > 0;
   // El upload del PDF persiste todo en el back de una. Si hubo upload OK,
   // el "Continuar" igual hace PUT /step/6 para reafirmar la estructura.
@@ -145,7 +150,7 @@ export function Step6Training() {
   const nav = useNavigate();
   // Amateur: salto = no hay plan estructurado, el usuario va a loguear
   // sesiones libremente desde WhatsApp.
-  const onSkip = isAmateur()
+  const onSkip = amateur
     ? () => nav("/onboarding/comidas-frecuentes")
     : undefined;
 
@@ -311,7 +316,7 @@ export function Step6Training() {
       >
         <div className="flex flex-col gap-3">
           {week.map((d) => (
-            <DayRow key={d.day} d={d} onChange={(patch) => updateDay(d.day, patch)} />
+            <DayRow key={d.day} d={d} amateur={amateur} onChange={(patch) => updateDay(d.day, patch)} />
           ))}
 
           <div className="f-card-soft flex items-center gap-3">
@@ -334,9 +339,10 @@ export function Step6Training() {
   );
 }
 
-function DayRow({ d, onChange }: { d: TrainingDay; onChange: (p: Partial<TrainingDay>) => void }) {
+function DayRow({ d, amateur, onChange }: { d: TrainingDay; amateur: boolean; onChange: (p: Partial<TrainingDay>) => void }) {
   const isRest = d.type === "rest";
   const session = SESSIONS.find((s) => s.value === d.type)!;
+  const detailMissing = amateur && !isRest && d.description.trim().length === 0;
   return (
     <div className="f-card !p-4">
       <div className="flex items-center gap-3 mb-3">
@@ -357,25 +363,38 @@ function DayRow({ d, onChange }: { d: TrainingDay; onChange: (p: Partial<Trainin
 
       {!isRest && (
         <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="col-span-2">
+            <label className="f-label">
+              {amateur ? "¿Qué entrenás?" : "Detalle (opcional)"}
+            </label>
+            <input
+              className="f-input"
+              placeholder={amateur ? "Pecho, tríceps, hombro" : "Ej: 12 km zona 2 + 6 sprints"}
+              value={d.description}
+              onChange={(e) => onChange({ description: e.target.value })}
+            />
+            {amateur && (
+              <p className="f-helper">
+                Puede ser el grupo muscular, el nombre de la rutina o el ejercicio. Si querés sumar series y reps, también.
+              </p>
+            )}
+            {detailMissing && (
+              <p className="mt-1 text-[12px] text-f-red-light">Decinos al menos qué entrenás ese día.</p>
+            )}
+          </div>
           <div>
-            <label className="f-label">Hora</label>
+            <label className="f-label">Hora {amateur && <span className="text-f-text3">(opcional)</span>}</label>
             <input type="time" className="f-input" value={d.time}
                    onChange={(e) => onChange({ time: e.target.value })} />
           </div>
           <div>
-            <label className="f-label">Duración</label>
+            <label className="f-label">Duración {amateur && <span className="text-f-text3">(opcional)</span>}</label>
             <div className="f-field">
               <input type="number" className="f-input has-suffix" placeholder="60"
                      value={d.durationMin ?? ""}
                      onChange={(e) => onChange({ durationMin: e.target.value ? Number(e.target.value) : null })} />
               <span className="f-suffix">min</span>
             </div>
-          </div>
-          <div className="col-span-2">
-            <label className="f-label">Detalle (opcional)</label>
-            <input className="f-input" placeholder="Ej: 12 km zona 2 + 6 sprints"
-                   value={d.description}
-                   onChange={(e) => onChange({ description: e.target.value })} />
           </div>
         </div>
       )}
