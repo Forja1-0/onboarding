@@ -195,7 +195,7 @@ export function buildStep7Body(m: MealsData) {
         .map((i) => ({
           food_item_id: null,
           name: i.name.trim(),
-          grams: i.grams ?? 0,
+          grams: i.grams ?? 1,
           kcal: 0,
           protein_g: 0,
           carbs_g: 0,
