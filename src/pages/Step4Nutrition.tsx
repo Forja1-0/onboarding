@@ -84,7 +84,7 @@ export function Step4Nutrition() {
       }
       lede={
         amateur
-          ? "¿Tenés plan del nutri? Subilo y listo. ¿No tenés? Tocá “Sin plan” y Forja te calcula un target estimado con tus datos — lo vas afinando con tu peso."
+          ? "¿Tenés plan del nutri? Subilo y listo. ¿No tenés? Tocá “Sin plan” y Forja te calcula tu target con tus datos — lo afina con tu peso. Las comidas que registres usan macros reales (base SARA), no inventados."
           : "Sin macros definidos, Forja no funciona. Si todavía no los tenés, hablalos con tu nutricionista antes de seguir — esto no se inventa."
       }
       onContinue={submit}

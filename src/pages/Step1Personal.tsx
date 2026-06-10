@@ -117,7 +117,7 @@ export function Step1Personal() {
             <span className="material-symbols-outlined text-f-green-glow" style={{ fontSize: 22 }}>local_fire_department</span>
           </div>
           <div className="flex-1">
-            <div className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3">TMB estimado</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.06em] text-f-text3">TMB calculado</div>
             <div className="font-sans font-bold text-[22px] text-f-text leading-[1]">
               {tmb} <span className="font-mono text-[12px] text-f-text2">kcal/día</span>
             </div>
