@@ -31,6 +31,13 @@ async function unwrap<T>(res: Response): Promise<T> {
     }
     throw new ValidationError(fieldErrors);
   }
+  // Errores de negocio que apuntan a un campo (ej. email ya registrado, 409):
+  // los tratamos como ValidationError para resaltar el input en vez de mostrar
+  // un cartel genérico.
+  const field = (body.details as { field?: string } | undefined)?.field;
+  if (field && typeof body.error === "string") {
+    throw new ValidationError({ [field]: body.error });
+  }
   throw new ApiError(res.status, body.error ?? "unknown_error", body.details);
 }
 

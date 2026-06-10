@@ -77,8 +77,16 @@ export function Step4Nutrition() {
     <OnboardingLayout
       step={4}
       eyebrow="Plan nutricional · 1 min · Crítico"
-      title={<>Tus <span className="font-serif italic font-normal text-f-green-glow">macros target.</span></>}
-      lede="Sin macros definidos, Forja no funciona. Si todavía no los tenés, hablalos con tu nutricionista antes de seguir — esto no se inventa."
+      title={
+        amateur
+          ? <>Tu <span className="font-serif italic font-normal text-f-green-glow">nutrición.</span></>
+          : <>Tus <span className="font-serif italic font-normal text-f-green-glow">macros target.</span></>
+      }
+      lede={
+        amateur
+          ? "¿Tenés plan del nutri? Subilo y listo. ¿No tenés? Tocá “Sin plan” y Forja te calcula un target estimado con tus datos — lo vas afinando con tu peso."
+          : "Sin macros definidos, Forja no funciona. Si todavía no los tenés, hablalos con tu nutricionista antes de seguir — esto no se inventa."
+      }
       onContinue={submit}
       continueDisabled={!valid || busy || uploading}
       continueLabel={busy ? "Guardando…" : uploading ? "Procesando archivo…" : "Continuar"}
@@ -180,8 +188,9 @@ export function Step4Nutrition() {
       {error && <ErrorBanner msg={error} />}
 
       <Callout>
-        Si los macros te suenan a chino, frená. Forja necesita números reales —
-        no estimaciones de Internet. Hablalo con tu nutri y volvé.
+        {amateur
+          ? "¿No tenés plan? No pasa nada. Forja te estima un punto de partida con tus datos y lo afina con tu peso. No reemplaza a un nutri, pero te deja arrancar hoy."
+          : "Si los macros te suenan a chino, frená. Forja necesita números reales — no estimaciones de Internet. Hablalo con tu nutri y volvé."}
       </Callout>
     </OnboardingLayout>
   );

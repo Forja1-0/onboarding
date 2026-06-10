@@ -33,7 +33,8 @@ export function Step7Meals() {
   const submit = () => { if (!valid) return; save(buildStep7Body(m), "consentimiento"); };
 
   const nav = useNavigate();
-  const onSkip = isAmateur()
+  const amateur = isAmateur();
+  const onSkip = amateur
     ? () => nav("/onboarding/consentimiento")
     : undefined;
 
@@ -43,11 +44,19 @@ export function Step7Meals() {
       eyebrow="Comidas frecuentes · 3 min · Inversión inicial"
       title={<>Las comidas que <span className="font-serif italic font-normal text-f-green-glow">ya repetís.</span></>}
       lede={
-        <>
-          Acá no cargás un menú nuevo. Cargás <span className="text-f-text">lo que ya hacés todas las semanas</span> —
-          tu desayuno tipo, tu pre-entreno de siempre, esa cena que se repite. La inversión de hoy hace que mañana
-          loguear una comida en WhatsApp te tome <span className="text-f-text">3 segundos</span>.
-        </>
+        amateur ? (
+          <>
+            Tus comidas típicas, aunque sean un desastre: el <span className="text-f-text">mate de la mañana</span>,
+            la sopa de la noche, la hamburguesa del finde. Cargá tus clásicas — el bot las reconoce cuando las
+            mencionás y te ahorra escribirlas. <span className="text-f-text">Lo que falte lo sumás desde el chat.</span>
+          </>
+        ) : (
+          <>
+            Acá no cargás un menú nuevo. Cargás <span className="text-f-text">lo que ya hacés todas las semanas</span> —
+            tu desayuno tipo, tu pre-entreno de siempre, esa cena que se repite. La inversión de hoy hace que mañana
+            loguear una comida en WhatsApp te tome <span className="text-f-text">3 segundos</span>.
+          </>
+        )
       }
       onContinue={submit}
       continueDisabled={!valid || busy}
